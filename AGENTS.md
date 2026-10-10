@@ -8,3 +8,8 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+## Architecture
+- Backend-only project: the mobile app talks directly to Lovable Cloud (auth, PostgREST tables, RPC functions, storage). Why: no web UI is required; RLS + SECURITY DEFINER RPCs keep stock/sales changes atomic and shop-scoped.
+- All stock-changing actions (sell, undo, receive, register, add from catalog) go through RPC functions, never direct table writes. Why: keeps stock and the sales/receipt ledgers consistent.
+- api.md at the project root is the mobile integration contract; update it whenever schema or RPCs change.
