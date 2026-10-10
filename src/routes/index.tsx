@@ -1,24 +1,28 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "Counter POS Backend" },
+      { name: "description", content: "Backend service for the Counter POS mobile app." },
+      { property: "og:title", content: "Counter POS Backend" },
+      { property: "og:description", content: "Backend service for the Counter POS mobile app." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
 function Index() {
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
+    <main className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="max-w-md text-center">
+        <h1 className="text-2xl font-semibold text-foreground">Counter POS Backend</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          This service powers the Counter POS mobile app. There is no web interface.
+        </p>
+      </div>
+    </main>
   );
 }
