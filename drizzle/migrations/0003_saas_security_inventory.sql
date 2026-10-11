@@ -732,7 +732,19 @@ GRANT EXECUTE ON FUNCTION public.create_shop(text),
   TO authenticated;
 
 -- Refresh the real-time publication for cost and lifecycle visibility.
-ALTER PUBLICATION supabase_realtime ADD TABLE public.stock_batches;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'stock_batches'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.stock_batches;
+  END IF;
+END
+$$;
 
 COMMENT ON TABLE public.stock_batches IS
   'FIFO inventory cost layers; each receipt can have its own unit_cost.';
