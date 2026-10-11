@@ -5,6 +5,7 @@
 ALTER TABLE public.shops
   ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'active'
     CHECK (status IN ('active', 'suspended', 'closed')),
+  ADD COLUMN IF NOT EXISTS owner_email text,
   ADD COLUMN IF NOT EXISTS suspended_at timestamptz,
   ADD COLUMN IF NOT EXISTS suspended_by uuid,
   ADD COLUMN IF NOT EXISTS suspension_reason text,
@@ -290,7 +291,15 @@ BEGIN
   IF NOT public.is_platform_admin() THEN RAISE EXCEPTION 'forbidden'; END IF;
   RETURN QUERY
   SELECT s.id, s.name, s.status,
-    (SELECT u.email FROM auth.users u WHERE u.id = s.created_by),
+    coalesce(
+      s.owner_email,
+      (SELECT u.email
+       FROM auth.users u
+       JOIN public.shop_members om ON om.user_id = u.id
+       WHERE om.shop_id = s.id AND om.role = 'owner'
+       LIMIT 1),
+      'Pending owner enrollment'
+    ),
     (SELECT count(*) FROM public.shop_members m WHERE m.shop_id = s.id),
     (SELECT count(*) FROM public.products p WHERE p.shop_id = s.id AND NOT p.archived),
     (SELECT coalesce(sum(p.stock), 0) FROM public.products p WHERE p.shop_id = s.id AND NOT p.archived),
@@ -300,7 +309,7 @@ BEGIN
   ORDER BY s.created_at DESC;
 END $$;
 
-CREATE OR REPLACE FUNCTION public.admin_create_business(_name text, _owner_email text)
+CREATE OR REPLACE FUNCTION public.admin_create_business(_name text, _owner_email text DEFAULT NULL)
 RETURNS public.shops
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE s public.shops; owner_id uuid;
@@ -309,14 +318,22 @@ BEGIN
   IF coalesce(length(trim(_name)), 0) NOT BETWEEN 1 AND 120 THEN
     RAISE EXCEPTION 'invalid_business_name';
   END IF;
-  SELECT id INTO owner_id FROM auth.users WHERE lower(email) = lower(trim(_owner_email));
-  IF owner_id IS NULL THEN RAISE EXCEPTION 'user_not_found'; END IF;
-  INSERT INTO public.shops(name, created_by, status)
-  VALUES (trim(_name), owner_id, 'active') RETURNING * INTO s;
-  INSERT INTO public.shop_members(shop_id, user_id, role)
-  VALUES (s.id, owner_id, 'owner');
+  SELECT id INTO owner_id
+  FROM auth.users
+  WHERE nullif(trim(_owner_email), '') IS NOT NULL
+    AND lower(email) = lower(trim(_owner_email));
+  INSERT INTO public.shops(name, created_by, owner_email, status)
+  VALUES (trim(_name), auth.uid(), nullif(trim(_owner_email), ''), 'active')
+  RETURNING * INTO s;
+  IF owner_id IS NOT NULL THEN
+    INSERT INTO public.shop_members(shop_id, user_id, role)
+    VALUES (s.id, owner_id, 'owner');
+  END IF;
   PERFORM public.write_audit_event(s.id, 'business_created_by_admin', 'shop', s.id,
-    jsonb_build_object('owner_email', lower(trim(_owner_email))));
+    jsonb_build_object(
+      'owner_email', nullif(lower(trim(_owner_email)), ''),
+      'owner_enrolled', owner_id IS NOT NULL
+    ));
   RETURN s;
 END $$;
 
