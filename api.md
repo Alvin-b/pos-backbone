@@ -1,207 +1,240 @@
-# Counter POS – Mobile API Guide
+# Counter POS – SaaS Mobile API Guide
 
-This backend powers the Counter POS mobile app: shops, staff, a shared master
-beverage catalog, shop inventory, selling (with undo), receiving stock, and
-daily totals. There is no web interface — the mobile app talks to the backend
-directly using the official Supabase client SDK (works with React Native /
-Expo, Flutter, Swift and Kotlin).
+This backend powers the Counter POS mobile app: business accounts, staff
+memberships, a shared beverage catalog, shop inventory, selling, stock
+receiving, FIFO cost layers, daily totals, and platform administration. There
+is no public backend UI; clients use Supabase Auth, PostgREST, RPCs, Storage,
+and RLS.
 
 ## 1. Connection settings
 
 | Setting | Value |
 |---|---|
 | Project URL | `https://pvcqfoycrqtnirbwtccm.supabase.co` |
-| Publishable (anon) key | `sb_publishable_1XttQd7gvzcsbZ__NnULGw_xMClc8GZ` |
+| Publishable key | See the project environment/configuration; it is safe to ship in a client |
 | Currency | KES, whole shillings (integers) |
 | Business day timezone | Africa/Nairobi |
 
-The publishable key is safe to ship inside the app. All data is protected by
-row-level security: a user only ever sees shops they belong to.
+The publishable key is not a secret. Never ship a service-role key in an APK.
+Every business row is scoped by `shop_id`; RLS and security-definer RPCs enforce
+that scope server-side.
 
-### React Native / Expo
-
-```bash
-npm i @supabase/supabase-js @react-native-async-storage/async-storage react-native-url-polyfill
-```
+## 2. Authentication and account lifecycle
 
 ```ts
-import 'react-native-url-polyfill/auto';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createClient } from '@supabase/supabase-js';
-
-export const supabase = createClient(
-  'https://pvcqfoycrqtnirbwtccm.supabase.co',
-  'sb_publishable_1XttQd7gvzcsbZ__NnULGw_xMClc8GZ',
-  { auth: { storage: AsyncStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false } },
-);
-```
-
-### Flutter
-
-```dart
-await Supabase.initialize(
-  url: 'https://pvcqfoycrqtnirbwtccm.supabase.co',
-  anonKey: 'sb_publishable_1XttQd7gvzcsbZ__NnULGw_xMClc8GZ',
-);
-final supabase = Supabase.instance.client;
-```
-
-Examples below use the JS SDK; every SDK has the same `from()`, `rpc()`,
-`storage` and `auth` methods.
-
-## 2. Authentication (email + password)
-
-```ts
-await supabase.auth.signUp({ email, password });           // sends a confirmation email
+await supabase.auth.signUp({ email, password });
 await supabase.auth.signInWithPassword({ email, password });
 await supabase.auth.signOut();
-const { data: { user } } = await supabase.auth.getUser();
 ```
 
-Email confirmation is on: after `signUp`, `session` is `null` until the user
-clicks the link in their email.
+Email confirmation follows the Supabase project setting. After signing in,
+call `my_account` to load memberships and platform-admin status:
+
+```ts
+const { data: account } = await supabase.rpc('my_account');
+// account.user_id
+// account.email
+// account.is_platform_admin
+// account.memberships: [{ shop_id, shop_name, role, status, currency, low_stock_threshold }]
+```
+
+A business is the tenant/account boundary. All staff are memberships in that
+business. A suspended or closed business retains its inventory and sales, but
+`is_shop_member` returns false, so reads and mutations stop immediately for the
+owner and every staff member. The owner cannot reopen it; only a platform admin
+can set the status back to `active`.
+
+Create a business after a normal user signs up:
+
+```ts
+await supabase.rpc('create_shop', { _name: 'My Counter' });
+```
 
 ## 3. Data model
 
-| Table | Purpose | App can |
+| Table | Purpose | Important fields |
 |---|---|---|
-| `shops` | A shop/counter. `id, name, currency, low_stock_threshold` | read; owners update `name`, `low_stock_threshold` |
-| `shop_members` | Who works in a shop. `shop_id, user_id, role ('owner'\|'cashier')` | read; owners delete cashiers |
-| `catalog_items` | Shared master library (78 Kenyan beverages). `id, code, barcode, name, brand, size, category, product_type, suggested_price, image_url, body_color, label_color, label_text_color` | read |
-| `products` | A shop's own stocked items. `id, shop_id, code, barcode, name, brand, size, category, product_type, price, stock, photo_url, photo_path, archived, colours` | read; owners update `name, brand, size, category, price, photo_url, photo_path, archived, barcode` |
-| `sales` | Sales ledger. `id, shop_id, product_id, product_name, qty, unit_price, total, sold_by, created_at, undone_at` | read |
-| `stock_receipts` | Stock-in ledger. `id, shop_id, product_id, qty, is_new_product, received_by, created_at` | read |
+| `shops` | Business/tenant account | `id, name, status, currency, low_stock_threshold` |
+| `shop_members` | Staff memberships | `shop_id, user_id, role` |
+| `catalog_items` | Shared master beverage library | `code, barcode, name, category, suggested_price, image_url` |
+| `products` | Business-owned inventory | `shop_id, code, price, stock, average_cost, archived` |
+| `stock_receipts` | Immutable stock-in/adjustment ledger | `qty, unit_cost, supplier, reference, notes, received_by` |
+| `stock_batches` | Remaining FIFO cost layers | `received_qty, remaining_qty, unit_cost, received_at` |
+| `sales` | Sales ledger | `qty, stock_qty, unit_price, unit_cost_total, profit_total, undone_at` |
+| `sale_batch_allocations` | Exact cost layers consumed by each sale | `sale_id, batch_id, qty, unit_cost` |
+| `audit_events` | Administrative and stock/sales audit trail | `shop_id, actor_user_id, action, metadata` |
 
-`product_type` is `'beer'` (bottle shape) or `'spirit'` (spirit bottle shape).
-When a product has no photo, draw the placeholder bottle with `body_color`,
-`label_color` and `label_text_color` like the prototype.
+`products.average_cost` is a weighted-average display value. The accounting
+source of truth is `stock_batches` plus `sale_batch_allocations`.
 
-Stock and sales are **never** written directly — use the functions below.
+## 4. Roles
 
-## 4. Functions (RPC)
+| Action | Owner | Manager | Inventory clerk | Cashier |
+|---|---:|---:|---:|---:|
+| View active business data | yes | yes | yes | yes |
+| Sell products | yes | yes | no | yes |
+| Receive stock / add catalog products | yes | yes | yes | no |
+| Adjust stock count | yes | yes | no | no |
+| Edit product price/name/photo | yes | yes | no | no |
+| Undo a sale | yes | yes | no | no |
+| Add/remove staff | yes | yes | no | no |
+| Suspend/close/reopen business | platform admin only | platform admin only | platform admin only | platform admin only |
 
-Call with `supabase.rpc(name, args)`. Errors come back in `error.message`
-using the codes listed.
+`owner` is reserved for the business creator/admin-created owner. Staff can be
+added by email only after they have registered their Supabase Auth account.
 
-| Function | Args | Returns | Errors |
-|---|---|---|---|
-| `create_shop` | `_name` | new shop (caller becomes owner) | `not_authenticated` |
-| `add_member_by_email` | `_shop, _email, _role?` (`'cashier'` default) | – | `forbidden`, `user_not_found` (they must sign up first) |
-| `find_product` | `_shop, _query` (barcode, code or name text) | list of products, exact code/barcode first | – |
-| `record_sale` | `_product, _qty` (default 1) | sale row | `invalid_quantity`, `product_not_found`, `out_of_stock` |
-| `undo_sale` | `_shop, _sale?` (omit = most recent sale) | undone sale; stock restored | `forbidden`, `nothing_to_undo` |
-| `receive_stock` | `_product, _qty` | updated product | `invalid_quantity`, `product_not_found` |
-| `add_from_catalog` | `_shop, _catalog, _qty?, _price?` | product (merged if already stocked) | `forbidden`, `catalog_item_not_found`, `invalid_input` |
-| `register_product` | `_shop, _code, _name, _price, _qty, _photo_path, _size?, _type?, _brand?, _category?` | new product | `code_required`, `name_required`, `price_required`, `invalid_quantity`, `photo_required`, `code_exists` |
-| `daily_summary` | `_shop, _day?` (`YYYY-MM-DD`, default today Nairobi) | `{ day, total, items_sold, sale_count, undone_count }` | `forbidden` |
-
-## 5. Typical flows
-
-### First launch
 ```ts
-const { data: memberships } = await supabase
-  .from('shop_members').select('role, shops(*)');
-if (!memberships?.length) {
-  const { data: shop } = await supabase.rpc('create_shop', { _name: 'My Counter' });
-}
-```
-
-### Scan tab – scan, then sell
-```ts
-const { data: matches } = await supabase.rpc('find_product', { _shop: shopId, _query: scannedCode });
-// 0 = "No stocked product found", 1 = show it, >1 = let the cashier choose
-const { data: sale, error } = await supabase.rpc('record_sale', { _product: matches[0].id, _qty: qty });
-if (error?.message.includes('out_of_stock')) showError('Out of stock. Check the shelf and tell a manager.');
-
-// Undo (toast button)
-await supabase.rpc('undo_sale', { _shop: shopId });
-```
-
-### Stock tab – shelf list
-```ts
-const { data: products } = await supabase
-  .from('products').select('*')
-  .eq('shop_id', shopId).eq('archived', false).order('name');
-// low stock: stock <= shop.low_stock_threshold (default 5); out: stock = 0
-```
-
-### Receive stock – known barcode
-```ts
-const [p] = (await supabase.rpc('find_product', { _shop: shopId, _query: code })).data ?? [];
-if (p && (p.code === code || p.barcode === code)) {
-  await supabase.rpc('receive_stock', { _product: p.id, _qty: 6 });
-}
-```
-
-### Receive stock – add from master library
-```ts
-const { data: library } = await supabase
-  .from('catalog_items').select('*')
-  .ilike('name', `%${search}%`)          // optional
-  .eq('category', 'Juice')                // optional
-  .order('name');
-await supabase.rpc('add_from_catalog', { _shop: shopId, _catalog: item.id, _qty: 12, _price: 90 });
-```
-
-### Receive stock – register a brand-new barcode (photo required)
-```ts
-const path = `${shopId}/${crypto.randomUUID()}.jpg`;    // folder MUST be the shop id
-await supabase.storage.from('product-photos')
-  .upload(path, fileBlobOrArrayBuffer, { contentType: 'image/jpeg' });
-await supabase.rpc('register_product', {
-  _shop: shopId, _code: code, _name: 'Kibao Vodka', _price: 900, _qty: 12,
-  _photo_path: path, _size: '750ml', _type: 'spirit',
+await supabase.rpc('add_member_by_email', {
+  _shop: shopId,
+  _email: 'cashier@shop.ke',
+  _role: 'cashier', // manager | inventory_clerk | cashier
 });
 ```
 
-### Showing photos
-- Catalog items and products added from the catalog have a public `photo_url` / `image_url` — display it directly.
-- Photos taken in the app are stored privately; `photo_path` is set. Get a temporary link:
-```ts
-const { data } = await supabase.storage.from('product-photos').createSignedUrl(p.photo_path, 3600);
-```
-- Replace a photo (owner): upload a new file, then `update({ photo_path })` on the product.
+## 5. Business administration RPCs
 
-### Today tab
-```ts
-const { data: summary } = await supabase.rpc('daily_summary', { _shop: shopId });
-const { data: recent } = await supabase.from('sales').select('*')
-  .eq('shop_id', shopId).order('created_at', { ascending: false }).limit(50);
-// undone sales have undone_at set — show them struck through
-```
+Platform admins are seeded by an operator inserting the trusted user UUID into
+`public.platform_admins`; this table is never writable by client users.
 
-### Owner actions
 ```ts
-await supabase.from('products').update({ price: 260 }).eq('id', productId);
-await supabase.from('products').update({ archived: true }).eq('id', productId);
-await supabase.rpc('add_member_by_email', { _shop: shopId, _email: 'cashier@shop.ke' });
-await supabase.from('shop_members').delete().eq('shop_id', shopId).eq('user_id', cashierId);
+const businesses = await supabase.rpc('admin_list_businesses');
+await supabase.rpc('admin_create_business', {
+  _name: 'New Client Business',
+  _owner_email: 'owner@client.ke',
+});
+await supabase.rpc('admin_set_business_status', {
+  _shop: shopId,
+  _status: 'suspended', // active | suspended | closed
+  _reason: 'Billing review',
+});
 ```
 
-## 6. Live updates (optional)
+"Remove" is implemented as `closed`, not a destructive delete. This preserves
+sales, inventory, batches, and audit history for later reopening.
 
-Stock and sales changes stream in real time, so two phones at one counter stay in sync:
+## 6. Sales and stock RPCs
+
+Stock and sales are never written directly from the client.
+
+| Function | Args | Meaning |
+|---|---|---|
+| `record_sale` | `_product, _qty` | Bottle sale using configured product price |
+| `record_sale_unit` | `_product, _qty, _unit_name, _unit_price` | Sale unit such as Bottle, Glass, or Cup; allocates FIFO stock |
+| `undo_sale` | `_shop, _sale?` | Manager/owner-only undo; restores exact consumed batches |
+| `receive_stock_with_cost` | `_product, _qty, _unit_cost?, _supplier?, _reference?, _notes?` | Adds a new independently priced batch |
+| `add_from_catalog_with_cost` | `_shop, _catalog, _qty?, _price?, _unit_cost?` | Adds/receives catalog product and cost batch |
+| `adjust_stock` | `_product, _new_stock, _reason?` | Audited positive/negative count adjustment |
+| `register_product_with_cost` | product fields plus `_unit_cost` | Creates a custom product and opening cost batch |
+| `find_product` | `_shop, _query` | Active shop-scoped barcode/code/name search |
+| `daily_summary` | `_shop, _day?` | Daily revenue and quantity summary |
+
+Legacy functions (`receive_stock`, `add_from_catalog`, `register_product`) stay
+available and create a zero-cost batch for backward compatibility. New clients
+should send unit cost whenever it is known.
+
+### Different purchase price example
+
+If the shop has 10 bottles at KSh 100 and receives 6 more at KSh 120:
+
+```ts
+await supabase.rpc('receive_stock_with_cost', {
+  _product: productId,
+  _qty: 6,
+  _unit_cost: 120,
+  _supplier: 'Supplier B',
+  _reference: 'INV-1042',
+});
+```
+
+The system keeps two layers: `10 × 100` and `6 × 120`. The next 10 bottle sales
+consume the KSh 100 layer first (FIFO); later sales consume the KSh 120 layer.
+Each sale stores its cost and gross profit. Undo restores the exact batch
+allocations, so changing the selling price never rewrites historical costs.
+
+`average_cost` is recalculated for quick display; it does not merge or delete
+batches. If physical stock is counted at 13 instead of 16, use:
+
+```ts
+await supabase.rpc('adjust_stock', {
+  _product: productId,
+  _new_stock: 13,
+  _reason: 'Weekly stock count – three damaged bottles',
+});
+```
+
+## 7. Typical mobile flows
+
+### First launch
+
+```ts
+const { data: account } = await supabase.rpc('my_account');
+if (!account.memberships.length && !account.is_platform_admin) {
+  await supabase.rpc('create_shop', { _name: 'My Counter' });
+}
+```
+
+The app must select one active membership before loading business data. It must
+clear its local cache when signing out or switching businesses.
+
+### Load active business data
+
+```ts
+const { data: products } = await supabase
+  .from('products')
+  .select('*')
+  .eq('shop_id', shopId)
+  .eq('archived', false)
+  .order('name');
+
+const { data: sales } = await supabase
+  .from('sales')
+  .select('*')
+  .eq('shop_id', shopId)
+  .order('created_at', { ascending: false })
+  .limit(200);
+```
+
+The backend still filters these rows with RLS; client-side `shop_id` filters are
+for query efficiency, not a security boundary.
+
+### Private product photos
+
+Use a path beginning with the business UUID:
+
+```ts
+const path = `${shopId}/${crypto.randomUUID()}.jpg`;
+await supabase.storage.from('product-photos').upload(path, file, {
+  contentType: 'image/jpeg',
+});
+const { data } = await supabase.storage.from('product-photos').createSignedUrl(path, 3600);
+```
+
+Never use a service-role key in the mobile app. Storage policies enforce the
+same active-business membership check.
+
+## 8. Live updates
 
 ```ts
 const channel = supabase.channel(`shop-${shopId}`)
   .on('postgres_changes', { event: '*', schema: 'public', table: 'products', filter: `shop_id=eq.${shopId}` }, refreshShelf)
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'stock_batches', filter: `shop_id=eq.${shopId}` }, refreshCosts)
   .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sales', filter: `shop_id=eq.${shopId}` }, refreshToday)
   .subscribe();
-// on screen unmount:
-supabase.removeChannel(channel);
 ```
 
-## 7. Roles
+## 9. Client security requirements
 
-| Action | Owner | Cashier |
-|---|---|---|
-| Sell, undo, scan, view shelf & today | yes | yes |
-| Receive stock, add from library, register new product | yes | yes |
-| Edit price / name / photo, archive products | yes | no |
-| Add / remove cashiers, rename shop | yes | no |
+- Ship only the publishable key; never ship a service-role key.
+- Store sessions in encrypted Android storage and clear them on explicit sign-out.
+- Treat `status` and membership role returned by `my_account` as UX state only;
+  the database remains the authorization boundary.
+- Do not trust local Room/cache values for stock, price, role, or suspension.
+- Use a release APK with R8 shrinking/obfuscation and a protected release
+  keystore. APK code cannot be made impossible to reverse engineer; secrets and
+  authorization must therefore live on the backend.
 
-## 8. Type generation (optional)
+## 10. Type generation
 
-TypeScript types for every table and function live in
-`src/integrations/supabase/types.ts` in this project — copy that file into the
-mobile app and use `createClient<Database>(...)` for full autocomplete.
+`src/integrations/supabase/types.ts` is the generated TypeScript surface for the
+original project. Regenerate it from the deployed Supabase schema after applying
+these migrations so RPC and new-column types stay current.
