@@ -290,7 +290,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
   IF NOT public.is_platform_admin() THEN RAISE EXCEPTION 'forbidden'; END IF;
   RETURN QUERY
-  SELECT s.id, s.name, s.status,
+  SELECT s.id::uuid, s.name::text, s.status::text,
     coalesce(
       s.owner_email,
       (SELECT u.email
@@ -299,12 +299,12 @@ BEGIN
        WHERE om.shop_id = s.id AND om.role = 'owner'
        LIMIT 1),
       'Pending owner enrollment'
-    ),
-    (SELECT count(*) FROM public.shop_members m WHERE m.shop_id = s.id),
-    (SELECT count(*) FROM public.products p WHERE p.shop_id = s.id AND NOT p.archived),
-    (SELECT coalesce(sum(p.stock), 0) FROM public.products p WHERE p.shop_id = s.id AND NOT p.archived),
-    s.created_at, s.suspended_at, s.closed_at,
-    coalesce(s.suspension_reason, s.closure_reason)
+    )::text,
+    (SELECT count(*)::bigint FROM public.shop_members m WHERE m.shop_id = s.id),
+    (SELECT count(*)::bigint FROM public.products p WHERE p.shop_id = s.id AND NOT p.archived),
+    (SELECT coalesce(sum(p.stock), 0)::bigint FROM public.products p WHERE p.shop_id = s.id AND NOT p.archived),
+    s.created_at::timestamptz, s.suspended_at::timestamptz, s.closed_at::timestamptz,
+    coalesce(s.suspension_reason, s.closure_reason)::text
   FROM public.shops s
   ORDER BY s.created_at DESC;
 END $$;
