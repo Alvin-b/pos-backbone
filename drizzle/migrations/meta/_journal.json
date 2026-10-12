@@ -29,6 +29,13 @@
       "when": 1791728223123,
       "tag": "0003_saas_security_inventory",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791728223124,
+      "tag": "0004_batch2_catalog",
+      "breakpoints": true
     }
   ]
 }
