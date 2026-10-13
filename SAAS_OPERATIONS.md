@@ -9,6 +9,7 @@ Apply `drizzle/migrations` in journal order. The important repair sequence for a
 3. Apply `0005_fix_admin_list_businesses.sql` if `0003` was already applied before the cast fix.
 4. Apply `0006_employee_controls.sql`.
 5. Apply `0007_qr_enrollment_challenges.sql`.
+6. Apply `0008_atomic_access_redemption.sql`.
 
 The role enum values are deliberately defined before the security functions. The migrations use one shared PostgreSQL schema: `shop_id` is the tenant boundary; RLS and security-definer RPCs check active membership and role on the server. The Android Room database is only a cache.
 
@@ -45,6 +46,16 @@ Business owners and managers can list tenant employees, suspend or terminate an 
 Working hours are stored in `employee_working_hours` using the business timezone (`shops.timezone`, default `Africa/Nairobi`). If an employee has no enabled schedule rows, the tenant keeps the legacy always-available behavior. Once any schedule is configured, the server checks the current local weekday/time before every sale. A database trigger rejects sales outside the configured window, so changing or modifying the APK cannot bypass the lock.
 
 The business app's **Manage team** panel can scan an employee's live QR challenge, lock/reactivate the account, and save weekday hours. The platform Superadmin scanner can approve the same QR for a selected tenant.
+
+## Application boundaries
+
+CounterPOS is intentionally split into separate application responsibilities:
+
+- **Superadmin APK (`:admin`)**: platform email/password login only; registers and suspends businesses, issues owner passes, and controls tenant onboarding.
+- **Big Club APK (`:app`, current advanced business build)**: owner/manager inventory, sales, tables, employee enrollment, employee status, and active-hours policies.
+- **Counter Seller APK (separate product build)**: a simpler admin/employee experience. It must not inherit the Big Club team-policy screens unless it is explicitly assigned the Big Club product profile.
+
+The current changes apply the advanced team and schedule controls only to the Big Club APK and the tenant backend. The Superadmin APK does not show business-owner or employee login controls.
 
 ## Seed the first platform administrator
 
