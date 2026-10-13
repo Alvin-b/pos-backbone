@@ -1,4 +1,10 @@
 -- Tenant profile controls which business dashboard and features the owner receives.
+ALTER TABLE public.shop_members
+  ADD COLUMN IF NOT EXISTS employment_status text NOT NULL DEFAULT 'active',
+  ADD COLUMN IF NOT EXISTS status_reason text,
+  ADD COLUMN IF NOT EXISTS status_changed_at timestamptz,
+  ADD COLUMN IF NOT EXISTS status_changed_by uuid;
+
 ALTER TABLE public.shops
   ADD COLUMN IF NOT EXISTS business_type text NOT NULL DEFAULT 'big_club'
     CHECK (business_type IN ('big_club', 'counter_seller')),

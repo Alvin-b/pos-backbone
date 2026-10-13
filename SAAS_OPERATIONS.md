@@ -11,6 +11,7 @@ Apply `drizzle/migrations` in journal order. The important repair sequence for a
 5. Apply `0007_qr_enrollment_challenges.sql`.
 6. Apply `0008_atomic_access_redemption.sql`.
 7. Apply `0009_business_profiles.sql`.
+8. If the Superadmin reports `column m.employment_status does not exist`, apply `0010_repair_employee_profile_schema.sql`. It is idempotent and repairs deployments where `0006_employee_controls.sql` was skipped or only partially applied.
 
 The role enum values are deliberately defined before the security functions. The migrations use one shared PostgreSQL schema: `shop_id` is the tenant boundary; RLS and security-definer RPCs check active membership and role on the server. The Android Room database is only a cache.
 
@@ -27,6 +28,18 @@ supabase functions deploy create-access-challenge --no-verify-jwt
 supabase functions deploy approve-access-challenge
 supabase functions deploy poll-access-challenge --no-verify-jwt
 ```
+
+The staff APK calls `POST https://YOUR_PROJECT_REF.supabase.co/functions/v1/create-access-challenge`. If the app reports **requested function was not found**, the function has not been deployed to the linked Supabase project (or the APK is using a different project URL). Verify it with:
+
+```bash
+supabase functions list
+curl -i -X POST "https://YOUR_PROJECT_REF.supabase.co/functions/v1/create-access-challenge" \
+  -H "apikey: YOUR_PUBLISHABLE_KEY" -H "Content-Type: application/json" -d '{}'
+```
+
+A successful response is JSON containing `token` beginning with `CPR1|` and `expires_in_seconds`.
+
+For an existing project showing the missing employee column, run `0006_employee_controls.sql` followed by `0009_business_profiles.sql`; if either migration was previously attempted and rolled back, run `0010_repair_employee_profile_schema.sql` instead. Then refresh the Superadmin APK—the `my_account()` RPC will return active employee status and tenant profile data.
 
 `create-access-pass` requires the caller's Supabase access token. `redeem-access-pass` intentionally accepts an anonymous request, but it accepts only a random, one-time passkey and immediately consumes it. The service-role key is used only inside Edge Functions and must never be placed in either APK.
 
