@@ -10,6 +10,7 @@ Apply `drizzle/migrations` in journal order. The important repair sequence for a
 4. Apply `0006_employee_controls.sql`.
 5. Apply `0007_qr_enrollment_challenges.sql`.
 6. Apply `0008_atomic_access_redemption.sql`.
+7. Apply `0009_business_profiles.sql`.
 
 The role enum values are deliberately defined before the security functions. The migrations use one shared PostgreSQL schema: `shop_id` is the tenant boundary; RLS and security-definer RPCs check active membership and role on the server. The Android Room database is only a cache.
 
@@ -56,6 +57,15 @@ CounterPOS is intentionally split into separate application responsibilities:
 - **Counter Seller APK (separate product build)**: a simpler admin/employee experience. It must not inherit the Big Club team-policy screens unless it is explicitly assigned the Big Club product profile.
 
 The current changes apply the advanced team and schedule controls only to the Big Club APK and the tenant backend. The Superadmin APK does not show business-owner or employee login controls.
+
+## Tenant profiles
+
+When registering a business, the platform administrator must choose:
+
+- **Business type**: `Big Club` or `Counter Seller`.
+- **Business size**: `Small`, `Medium`, or `Large`.
+
+The backend stores the selected profile on `shops.business_type`, `shops.business_size`, and `shops.feature_flags`. The owner pass is tied to that shop, and the business app receives the profile through `my_account()` after redemption. Big Club tenants receive tables, FIFO inventory, sales analytics, employee management, and working-hours controls. Counter Seller tenants receive the simpler counter workflow with employee management but without the Big Club tables and schedule screens.
 
 ## Seed the first platform administrator
 

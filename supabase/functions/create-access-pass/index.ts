@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
   if (!isPlatformAdmin && !isManager) return json({ error: "forbidden" }, 403);
   if (!isPlatformAdmin && role === "owner") return json({ error: "owner_pass_platform_only" }, 403);
 
-  const { data: shop } = await db.from("shops").select("id,name,status").eq("id", shopId).maybeSingle();
+  const { data: shop } = await db.from("shops").select("id,name,status,business_type,business_size,feature_flags").eq("id", shopId).maybeSingle();
   if (!shop) return json({ error: "business_not_found" }, 404);
   if (shop.status !== "active") return json({ error: "business_not_active" }, 409);
 
@@ -38,5 +38,5 @@ Deno.serve(async (req) => {
   });
   if (error) return json({ error: "could_not_create_pass", detail: error.message }, 500);
 
-  return json({ business_id: shop.id, business_name: shop.name, role, passkey, expires_in_hours: 24 });
+  return json({ business_id: shop.id, business_name: shop.name, role, passkey, business_type: shop.business_type, business_size: shop.business_size, feature_flags: shop.feature_flags, expires_in_hours: 24 });
 });
