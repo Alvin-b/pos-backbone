@@ -17,7 +17,7 @@ Deno.serve(async (req) => {
   const db = adminClient();
   const [{ data: platform }, { data: membership }] = await Promise.all([
     db.from("platform_admins").select("user_id").eq("user_id", user.id).maybeSingle(),
-    db.from("shop_members").select("role").eq("shop_id", shopId).eq("user_id", user.id).maybeSingle(),
+    db.from("shop_members").select("role,employment_status").eq("shop_id", shopId).eq("user_id", user.id).eq("employment_status", "active").maybeSingle(),
   ]);
   const isPlatformAdmin = Boolean(platform);
   const isManager = membership?.role === "owner" || membership?.role === "manager";

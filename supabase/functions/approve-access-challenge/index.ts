@@ -1,0 +1,24 @@
+import { adminClient, bearer, caller, corsHeaders, json, sha256 } from "../_shared/access.ts";
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
+  const user = await caller(req);
+  if (!user) return json({ error: "not_authenticated" }, 401);
+  const body = await req.json().catch(() => ({}));
+  const token = String(body.token ?? "").trim();
+  const shopId = String(body.shop_id ?? "").trim();
+  const role = String(body.role ?? "cashier").trim();
+  if (!token || !shopId || !["manager", "inventory_clerk", "cashier"].includes(role)) return json({ error: "invalid_qr_approval" }, 400);
+  const db = adminClient();
+  const [{ data: platform }, { data: membership }] = await Promise.all([
+    db.from("platform_admins").select("user_id").eq("user_id", user.id).maybeSingle(),
+    db.from("shop_members").select("role,employment_status").eq("shop_id", shopId).eq("user_id", user.id).maybeSingle(),
+  ]);
+  if (!platform && !(membership && ["owner", "manager"].includes(membership.role) && membership.employment_status === "active")) return json({ error: "forbidden" }, 403);
+  const { data: challenge } = await db.from("access_challenges").select("id,status,expires_at").eq("token_hash", await sha256(token)).maybeSingle();
+  if (!challenge || challenge.status !== "pending" || new Date(challenge.expires_at).getTime() <= Date.now()) return json({ error: "qr_expired_or_used" }, 401);
+  const { error } = await db.from("access_challenges").update({ status: "approved", shop_id: shopId, role, approved_at: new Date().toISOString(), approved_by: user.id }).eq("id", challenge.id).eq("status", "pending");
+  if (error) return json({ error: "could_not_approve_qr" }, 500);
+  return json({ approved: true });
+});

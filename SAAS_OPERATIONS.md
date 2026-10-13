@@ -7,6 +7,8 @@ Apply `drizzle/migrations` in journal order. The important repair sequence for a
 1. Apply `0003_saas_security_inventory.sql` (the admin list RPC now has explicit return-type casts).
 2. Apply `0004_access_passes.sql`.
 3. Apply `0005_fix_admin_list_businesses.sql` if `0003` was already applied before the cast fix.
+4. Apply `0006_employee_controls.sql`.
+5. Apply `0007_qr_enrollment_challenges.sql`.
 
 The role enum values are deliberately defined before the security functions. The migrations use one shared PostgreSQL schema: `shop_id` is the tenant boundary; RLS and security-definer RPCs check active membership and role on the server. The Android Room database is only a cache.
 
@@ -19,6 +21,9 @@ supabase login
 supabase link --project-ref YOUR_PROJECT_REF
 supabase functions deploy create-access-pass
 supabase functions deploy redeem-access-pass --no-verify-jwt
+supabase functions deploy create-access-challenge --no-verify-jwt
+supabase functions deploy approve-access-challenge
+supabase functions deploy poll-access-challenge --no-verify-jwt
 ```
 
 `create-access-pass` requires the caller's Supabase access token. `redeem-access-pass` intentionally accepts an anonymous request, but it accepts only a random, one-time passkey and immediately consumes it. The service-role key is used only inside Edge Functions and must never be placed in either APK.
@@ -32,6 +37,14 @@ The recipient flow is now:
 5. Supabase Auth creates the normal access/refresh session; all later access is still controlled by business status and RLS.
 
 Passes expire after 24 hours and cannot be reused. A suspended or closed business cannot issue or redeem passes.
+
+## Employee controls and working hours
+
+Business owners and managers can list tenant employees, suspend or terminate an employee, reactivate an employee, and set weekday working hours. Employee status is stored on `shop_members`; it is not implemented as a client-only flag. Suspended and terminated employees immediately lose tenant RLS access.
+
+Working hours are stored in `employee_working_hours` using the business timezone (`shops.timezone`, default `Africa/Nairobi`). If an employee has no enabled schedule rows, the tenant keeps the legacy always-available behavior. Once any schedule is configured, the server checks the current local weekday/time before every sale. A database trigger rejects sales outside the configured window, so changing or modifying the APK cannot bypass the lock.
+
+The business app's **Manage team** panel can scan an employee's live QR challenge, lock/reactivate the account, and save weekday hours. The platform Superadmin scanner can approve the same QR for a selected tenant.
 
 ## Seed the first platform administrator
 
