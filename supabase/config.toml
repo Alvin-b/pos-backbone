@@ -1,1 +1,15 @@
 project_id = "pvcqfoycrqtnirbwtccm"
+[functions.create-access-challenge]
+verify_jwt = false
+
+[functions.poll-access-challenge]
+verify_jwt = false
+
+[functions.redeem-access-pass]
+verify_jwt = false
+
+[functions.approve-access-challenge]
+verify_jwt = true
+
+[functions.create-access-pass]
+verify_jwt = true
