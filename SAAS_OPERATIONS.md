@@ -12,6 +12,7 @@ Apply `drizzle/migrations` in journal order. The important repair sequence for a
 6. Apply `0008_atomic_access_redemption.sql`.
 7. Apply `0009_business_profiles.sql`.
 8. If the Superadmin reports `column m.employment_status does not exist`, apply `0010_repair_employee_profile_schema.sql`. It is idempotent and repairs deployments where `0006_employee_controls.sql` was skipped or only partially applied.
+9. Apply `0012_rotating_superadmin_token.sql`, or run the updated Lovable bootstrap script, to create the short-lived Superadmin token table.
 
 The role enum values are deliberately defined before the security functions. The migrations use one shared PostgreSQL schema: `shop_id` is the tenant boundary; RLS and security-definer RPCs check active membership and role on the server. The Android Room database is only a cache.
 
@@ -77,6 +78,10 @@ When registering a business, the platform administrator must choose:
 - **Business size**: `Small`, `Medium`, or `Large`.
 
 The backend stores the selected profile on `shops.business_type`, `shops.business_size`, and `shops.feature_flags`. The owner pass is tied to that shop, and the business app receives the profile through `my_account()` after redemption. Big Club tenants receive tables, FIFO inventory, sales analytics, employee management, and working-hours controls. Counter Seller tenants receive the simpler counter workflow with employee management but without the Big Club tables and schedule screens.
+
+## Rotating Superadmin token
+
+The protected Lovable web page authenticates the platform administrator normally, then calls `issue-superadmin-token` and displays a `CPSA1|...` bearer token valid for 10 minutes. Only the SHA-256 hash is stored. The Android login screen sends the token to `redeem-superadmin-token`; the server validates expiry and platform-admin membership, then returns a normal Supabase session for the platform-admin console. Business passkeys and employee QR challenges cannot redeem this token.
 
 ## Seed the first platform administrator
 
