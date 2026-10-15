@@ -37,12 +37,18 @@ The source is already in the repository under `supabase/functions/`:
 - `poll-access-challenge`
 - `create-access-pass`
 - `redeem-access-pass`
+- `issue-superadmin-token`
+- `redeem-superadmin-token`
 
 In Lovable, use this prompt in the project editor:
 
-> Deploy the Supabase Edge Functions from `supabase/functions` to the connected Supabase project. Deploy `create-access-challenge` with JWT verification disabled, `poll-access-challenge` with JWT verification disabled, and `redeem-access-pass` with JWT verification disabled. Deploy `approve-access-challenge` and `create-access-pass` with JWT verification enabled. Ensure the functions have the Supabase service-role secret available server-side. Do not expose or copy the service-role key into frontend code, Android code, logs, or client-visible environment variables. Verify all five function routes with a POST smoke test.
+> Deploy the Supabase Edge Functions from `supabase/functions` to the connected Supabase project. Deploy `create-access-challenge`, `poll-access-challenge`, `redeem-access-pass`, and `redeem-superadmin-token` with JWT verification disabled. Deploy `approve-access-challenge`, `create-access-pass`, and `issue-superadmin-token` with JWT verification enabled. Ensure the functions have the Supabase service-role secret available server-side. Do not expose or copy the service-role key into frontend code, Android code, logs, or client-visible environment variables. Verify all seven function routes with POST smoke tests.
 
-If Lovable exposes a function deployment panel, deploy the five folders with the same JWT settings above. The function source must remain server-side and must use the existing `_shared/access.ts` helper.
+If Lovable exposes a function deployment panel, deploy the seven folders with the same JWT settings above. The function source must remain server-side and must use the existing `_shared/access.ts` helper.
+
+### Rotating Superadmin token
+
+The protected Lovable admin UI must call `issue-superadmin-token` using an already authenticated platform-admin session. It returns one bearer token valid for 600 seconds. Display it only to authorized platform administrators and refresh it when `expires_at` is reached. The Android login screen sends that token to `redeem-superadmin-token`; successful redemption returns a normal Supabase session and opens the platform-admin console. Business passkeys and QR challenges never grant platform-admin access.
 
 ## 4. Verify the missing function
 
@@ -68,10 +74,11 @@ A `404` means the function is still not deployed. A `500` mentioning `access_cha
 
 There is no separate superadmin app required:
 
-1. Install/open the current Counter POS client app.
-2. Sign in with the confirmed Auth email and password used in step 2.
-3. The app reads `my_account()`.
-4. Because the account is in `public.platform_admins`, it opens the **Platform Admin** console.
+1. The protected Lovable UI signs in the platform administrator normally and calls `issue-superadmin-token`.
+2. Copy the displayed token before its 10-minute expiry.
+3. Install/open the current Counter POS client app and paste the token into **Open Superadmin interface**.
+4. The app calls `redeem-superadmin-token`, receives a normal Supabase session, and reads `my_account()`.
+5. Because the token identity is registered in `public.platform_admins`, it opens the **Platform Admin** console.
 5. From there the administrator can register businesses, issue owner access, open a business profile, approve enrollment QR codes, and suspend/reopen/close businesses.
 
 Business owners and employees use the same client app with their own memberships and passkeys. Their screens are selected from their server-side role and business profile.

@@ -13,3 +13,9 @@ verify_jwt = true
 
 [functions.create-access-pass]
 verify_jwt = true
+
+[functions.issue-superadmin-token]
+verify_jwt = true
+
+[functions.redeem-superadmin-token]
+verify_jwt = false

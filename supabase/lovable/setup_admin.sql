@@ -58,6 +58,54 @@ ALTER TABLE public.platform_admins ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.platform_admins FROM anon, authenticated;
 GRANT ALL ON public.platform_admins TO service_role;
 
+CREATE TABLE IF NOT EXISTS public.platform_admin_tokens (
+  singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton),
+  token_hash text NOT NULL,
+  auth_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  issued_at timestamptz NOT NULL DEFAULT now(),
+  expires_at timestamptz NOT NULL,
+  issued_by uuid REFERENCES auth.users(id),
+  last_redeemed_at timestamptz
+);
+ALTER TABLE public.platform_admin_tokens ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.platform_admin_tokens FROM anon, authenticated;
+GRANT ALL ON public.platform_admin_tokens TO service_role;
+
+CREATE TABLE IF NOT EXISTS public.access_passes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  shop_id uuid NOT NULL REFERENCES public.shops(id) ON DELETE CASCADE,
+  role public.shop_role NOT NULL CHECK (role IN ('owner', 'manager', 'inventory_clerk', 'cashier')),
+  pass_hash text NOT NULL UNIQUE,
+  created_by uuid NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  expires_at timestamptz NOT NULL DEFAULT (now() + interval '24 hours'),
+  redeemed_at timestamptz,
+  redeemed_by uuid,
+  revoked_at timestamptz
+);
+CREATE INDEX IF NOT EXISTS access_passes_active_idx ON public.access_passes(pass_hash) WHERE redeemed_at IS NULL AND revoked_at IS NULL;
+ALTER TABLE public.access_passes ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.access_passes FROM anon, authenticated;
+GRANT ALL ON public.access_passes TO service_role;
+
+CREATE TABLE IF NOT EXISTS public.access_challenges (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  token_hash text NOT NULL UNIQUE,
+  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'consumed', 'expired', 'revoked')),
+  shop_id uuid REFERENCES public.shops(id) ON DELETE CASCADE,
+  role public.shop_role,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  expires_at timestamptz NOT NULL DEFAULT (now() + interval '10 minutes'),
+  approved_at timestamptz,
+  approved_by uuid,
+  consumed_at timestamptz,
+  consumed_by uuid
+);
+CREATE INDEX IF NOT EXISTS access_challenges_pending_idx ON public.access_challenges(token_hash, status, expires_at);
+ALTER TABLE public.access_challenges ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.access_challenges FROM anon, authenticated;
+GRANT ALL ON public.access_challenges TO service_role;
+
 -- Register the first platform administrator.
 -- Replace the email value before running this block.
 DO $$
