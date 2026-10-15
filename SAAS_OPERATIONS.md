@@ -62,14 +62,12 @@ Working hours are stored in `employee_working_hours` using the business timezone
 The business app's **Manage team** panel can scan an employee's live QR challenge, lock/reactivate the account, and save weekday hours. The platform Superadmin scanner can approve the same QR for a selected tenant.
 
 ## Application boundaries
+CounterPOS currently uses one client APK with server-selected roles rather than requiring a separate superadmin APK:
+- **Platform administrator**: signs in through the same client app and is routed to `AdminConsoleScreen` when the Auth user exists in `public.platform_admins`. This screen registers, suspends, reopens, and closes businesses, issues owner passes, and controls tenant onboarding.
+- **Business owner/manager**: uses the same client app for inventory, sales, tables, employee enrollment, employee status, and active-hours policies.
+- **Cashier/inventory clerk**: uses the same client app with server-enforced role restrictions.
 
-CounterPOS is intentionally split into separate application responsibilities:
-
-- **Superadmin APK (`:admin`)**: platform email/password login only; registers and suspends businesses, issues owner passes, and controls tenant onboarding.
-- **Big Club APK (`:app`, current advanced business build)**: owner/manager inventory, sales, tables, employee enrollment, employee status, and active-hours policies.
-- **Counter Seller APK (separate product build)**: a simpler admin/employee experience. It must not inherit the Big Club team-policy screens unless it is explicitly assigned the Big Club product profile.
-
-The current changes apply the advanced team and schedule controls only to the Big Club APK and the tenant backend. The Superadmin APK does not show business-owner or employee login controls.
+Business profiles still control feature flags. A future separate admin APK can be added without changing the backend contract, but it is not required for the current SaaS deployment.
 
 ## Tenant profiles
 
