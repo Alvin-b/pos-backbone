@@ -14,6 +14,103 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_challenges: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          consumed_at: string | null
+          consumed_by: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          role: Database["public"]["Enums"]["shop_role"] | null
+          shop_id: string | null
+          status: string
+          token_hash: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          consumed_at?: string | null
+          consumed_by?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["shop_role"] | null
+          shop_id?: string | null
+          status?: string
+          token_hash: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          consumed_at?: string | null
+          consumed_by?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["shop_role"] | null
+          shop_id?: string | null
+          status?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "access_challenges_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      access_passes: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          pass_hash: string
+          redeemed_at: string | null
+          redeemed_by: string | null
+          revoked_at: string | null
+          role: Database["public"]["Enums"]["shop_role"]
+          shop_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at?: string
+          id?: string
+          pass_hash: string
+          redeemed_at?: string | null
+          redeemed_by?: string | null
+          revoked_at?: string | null
+          role: Database["public"]["Enums"]["shop_role"]
+          shop_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          id?: string
+          pass_hash?: string
+          redeemed_at?: string | null
+          redeemed_by?: string | null
+          revoked_at?: string | null
+          role?: Database["public"]["Enums"]["shop_role"]
+          shop_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "access_passes_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_events: {
         Row: {
           action: string
@@ -796,6 +893,10 @@ export type Database = {
         }
       }
       can_sell_for_shop: { Args: { _shop: string }; Returns: boolean }
+      clear_employee_schedule: {
+        Args: { _shop: string; _user: string }
+        Returns: undefined
+      }
       create_shop: {
         Args: { _name: string }
         Returns: {
@@ -1000,6 +1101,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      redeem_access_pass_atomic: {
+        Args: { _pass_hash: string; _user: string }
+        Returns: Json
+      }
       register_product: {
         Args: {
           _brand?: string
@@ -1086,6 +1191,26 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      set_employee_status: {
+        Args: {
+          _reason?: string
+          _shop: string
+          _status: string
+          _user: string
+        }
+        Returns: undefined
+      }
+      set_employee_working_hours: {
+        Args: {
+          _enabled?: boolean
+          _end: string
+          _shop: string
+          _start: string
+          _user: string
+          _weekday: number
+        }
+        Returns: undefined
       }
       undo_sale: {
         Args: { _sale?: string; _shop: string }
