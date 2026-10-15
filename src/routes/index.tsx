@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -22,6 +22,7 @@ function SuperadminTokenPage() {
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [autoRefreshBlocked, setAutoRefreshBlocked] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,26 +62,36 @@ function SuperadminTokenPage() {
     setMessage(null);
     const result = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     if (result.error) setError(result.error.message);
-    else setMessage("Signed in. Issue a temporary Superadmin token below.");
+    else {
+      setAutoRefreshBlocked(false);
+      setMessage("Signed in. A temporary Superadmin token will be generated automatically.");
+    }
     setBusy(false);
   }
 
-  async function issueToken() {
+  const issueToken = useCallback(async () => {
     setBusy(true);
     setError(null);
     setMessage(null);
+    setAutoRefreshBlocked(false);
     const result = await supabase.functions.invoke("issue-superadmin-token", { body: {} });
     if (result.error) {
       setError(result.error.message || "Only a platform administrator can issue this token.");
       setToken(null);
       setExpiresAt(null);
+      setAutoRefreshBlocked(true);
     } else {
       setToken(result.data?.token ?? null);
       setExpiresAt(result.data?.expires_at ?? null);
       setMessage("Token issued. Copy it privately before it expires.");
     }
     setBusy(false);
-  }
+  }, []);
+
+  useEffect(() => {
+    if (!session || busy || autoRefreshBlocked || (expiresAt && secondsLeft > 0)) return;
+    void issueToken();
+  }, [autoRefreshBlocked, busy, expiresAt, issueToken, secondsLeft, session]);
 
   async function signOut() {
     await supabase.auth.signOut();
