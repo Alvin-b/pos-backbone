@@ -244,6 +244,36 @@ export type Database = {
           },
         ]
       }
+      platform_admin_tokens: {
+        Row: {
+          auth_user_id: string
+          expires_at: string
+          issued_at: string
+          issued_by: string | null
+          last_redeemed_at: string | null
+          singleton: boolean
+          token_hash: string
+        }
+        Insert: {
+          auth_user_id: string
+          expires_at: string
+          issued_at?: string
+          issued_by?: string | null
+          last_redeemed_at?: string | null
+          singleton?: boolean
+          token_hash: string
+        }
+        Update: {
+          auth_user_id?: string
+          expires_at?: string
+          issued_at?: string
+          issued_by?: string | null
+          last_redeemed_at?: string | null
+          singleton?: boolean
+          token_hash?: string
+        }
+        Relationships: []
+      }
       platform_admins: {
         Row: {
           created_at: string
@@ -1196,13 +1226,9 @@ export type Database = {
         Args: { _reason?: string; _shop: string; _user: string }
         Returns: undefined
       }
-      remove_employee: {
-        Args: { _shop: string; _user: string }
-        Returns: undefined
-      }
       set_employee_role: {
         Args: {
-          _role: string
+          _role: Database["public"]["Enums"]["shop_role"]
           _shop: string
           _user: string
         }
@@ -1226,10 +1252,6 @@ export type Database = {
           _user: string
           _weekday: number
         }
-        Returns: undefined
-      }
-      update_shop_name: {
-        Args: { _name: string; _shop: string }
         Returns: undefined
       }
       undo_sale: {
@@ -1257,6 +1279,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      update_shop_name: {
+        Args: { _name: string; _shop: string }
+        Returns: undefined
       }
       write_audit_event: {
         Args: {
