@@ -43,6 +43,13 @@
       "when": 1791631393025,
       "tag": "0005_table_orders",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791631393026,
+      "tag": "0015_counter_sales_reporting",
+      "breakpoints": true
     }
   ]
 }
