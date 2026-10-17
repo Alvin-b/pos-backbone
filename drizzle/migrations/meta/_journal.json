@@ -50,6 +50,13 @@
       "when": 1791631393026,
       "tag": "0015_counter_sales_reporting",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792212953132,
+      "tag": "0016_counter_inventory_modes",
+      "breakpoints": true
     }
   ]
 }

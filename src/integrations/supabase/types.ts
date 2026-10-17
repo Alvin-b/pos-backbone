@@ -529,6 +529,7 @@ export type Database = {
         Row: {
           business_size: string
           business_type: string
+          counter_inventory_mode: string
           closed_at: string | null
           closed_by: string | null
           closure_reason: string | null
@@ -549,6 +550,7 @@ export type Database = {
         Insert: {
           business_size?: string
           business_type?: string
+          counter_inventory_mode?: string
           closed_at?: string | null
           closed_by?: string | null
           closure_reason?: string | null
@@ -569,6 +571,7 @@ export type Database = {
         Update: {
           business_size?: string
           business_type?: string
+          counter_inventory_mode?: string
           closed_at?: string | null
           closed_by?: string | null
           closure_reason?: string | null
@@ -586,6 +589,24 @@ export type Database = {
           suspension_reason?: string | null
           timezone?: string
         }
+        Relationships: []
+      }
+      service_counters: {
+        Row: { active: boolean; created_at: string; created_by: string; id: string; name: string; shop_id: string }
+        Insert: { active?: boolean; created_at?: string; created_by: string; id?: string; name: string; shop_id: string }
+        Update: { active?: boolean; created_at?: string; created_by?: string; id?: string; name?: string; shop_id?: string }
+        Relationships: []
+      }
+      counter_stock_balances: {
+        Row: { product_id: string; quantity: number; service_counter_id: string; shop_id: string; updated_at: string }
+        Insert: { product_id: string; quantity?: number; service_counter_id: string; shop_id: string; updated_at?: string }
+        Update: { product_id?: string; quantity?: number; service_counter_id?: string; shop_id?: string; updated_at?: string }
+        Relationships: []
+      }
+      counter_stock_movements: {
+        Row: { actor_user_id: string | null; created_at: string; id: string; movement_type: string; note: string | null; product_id: string; quantity_delta: number; related_counter_id: string | null; service_counter_id: string; shop_id: string }
+        Insert: { actor_user_id?: string | null; created_at?: string; id?: string; movement_type: string; note?: string | null; product_id: string; quantity_delta: number; related_counter_id?: string | null; service_counter_id: string; shop_id: string }
+        Update: { actor_user_id?: string | null; created_at?: string; id?: string; movement_type?: string; note?: string | null; product_id?: string; quantity_delta?: number; related_counter_id?: string | null; service_counter_id?: string; shop_id?: string }
         Relationships: []
       }
       stock_batches: {
@@ -870,6 +891,8 @@ export type Database = {
           business_type: string
           closed_at: string
           created_at: string
+          counter_count: number
+          counter_inventory_mode: string
           feature_flags: Json
           lifecycle_reason: string
           member_count: number
@@ -881,6 +904,18 @@ export type Database = {
           stock_units: number
           suspended_at: string
         }[]
+      }
+      admin_create_business_with_counter_setup: {
+        Args: { _counter_count?: number; _counter_inventory_mode?: string; _name: string; _owner_email?: string }
+        Returns: Json
+      }
+      counter_sales_report: {
+        Args: { _from?: string; _shop: string; _to?: string }
+        Returns: { counter_id: string | null; counter_name: string; revenue: number; sale_count: number; units: number }[]
+      }
+      counter_stock_report: {
+        Args: { _counter: string; _shop: string }
+        Returns: { product_id: string; quantity: number }[]
       }
       admin_list_shop_members: {
         Args: { _shop: string }
@@ -956,6 +991,37 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      add_from_catalog_at_counter: {
+        Args: { _catalog: string; _counter: string; _price: number; _qty: number; _shop: string; _unit_cost?: number }
+        Returns: Json
+      }
+      adjust_counter_stock: {
+        Args: { _counter: string; _new_stock: number; _product: string; _reason?: string }
+        Returns: Json
+      }
+      create_service_counter: { Args: { _name: string; _shop: string }; Returns: Json }
+      record_sale_unit_from_counter: {
+        Args: { _counter: string; _product: string; _qty?: number; _unit_name?: string; _unit_price?: number }
+        Returns: Json
+      }
+      record_table_sale_from_counter: {
+        Args: { _counter: string; _product: string; _qty: number; _shop: string; _table: string; _unit_name: string; _unit_price: number }
+        Returns: Json
+      }
+      receive_stock_at_counter: {
+        Args: { _counter: string; _notes?: string; _product: string; _qty: number; _reference?: string; _supplier?: string; _unit_cost?: number }
+        Returns: Json
+      }
+      register_product_at_counter: {
+        Args: { _brand?: string; _category?: string; _code: string; _counter: string; _name: string; _photo_path: string; _price: number; _qty: number; _shop: string; _size?: string; _type?: Database["public"]["Enums"]["product_type"]; _unit_cost?: number }
+        Returns: Json
+      }
+      rename_service_counter: { Args: { _counter: string; _name: string; _shop: string }; Returns: Json }
+      transfer_counter_stock: {
+        Args: { _from_counter: string; _product: string; _qty: number; _reason?: string; _shop: string; _to_counter: string }
+        Returns: undefined
+      }
+      undo_sale_from_counter: { Args: { _shop: string }; Returns: Json }
       daily_summary: { Args: { _day?: string; _shop: string }; Returns: Json }
       find_product: {
         Args: { _query: string; _shop: string }
