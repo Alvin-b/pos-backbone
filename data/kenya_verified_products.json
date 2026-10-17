@@ -1,0 +1,38 @@
+[
+  {
+    "code": "6001000000110",
+    "name": "Chrome Vodka",
+    "brand": "Chrome",
+    "category": "Spirits",
+    "size": "750ml",
+    "barcode": "6161101604031",
+    "barcode_status": "verified_external",
+    "image_url": "https://images.openfoodfacts.org/images/products/616/110/160/4031/front_fr.3.400.jpg",
+    "source_url": "https://world.openfoodfacts.org/product/6161101604031/chrome-vodka",
+    "source_country": "Kenya"
+  },
+  {
+    "code": "LIB-AFIAAFIAFRUITDRINKAPPLE500ML500ML",
+    "name": "Afia Fruit Drinks",
+    "brand": "Afia",
+    "category": "Juice",
+    "barcode": "6164000012013",
+    "barcode_status": "verified_external",
+    "image_url": "https://images.openfoodfacts.org/images/products/616/400/001/2013/front_fr.3.400.jpg",
+    "source_url": "https://world.openfoodfacts.org/product/6164000012013/afia-fruit-drinks",
+    "source_country": "Kenya",
+    "match_note": "Open Food Facts record is for Afia Fruit Drinks generally; do not assume the barcode applies to every Afia flavour or pack size."
+  },
+  {
+    "code": "OFF-6164001199195",
+    "name": "Safari Energy Drink",
+    "brand": "Safari",
+    "category": "Energy drinks",
+    "size": "",
+    "barcode": "6164001199195",
+    "barcode_status": "verified_external",
+    "image_url": "https://images.openfoodfacts.org/images/products/616/400/119/9195/front_fr.3.400.jpg",
+    "source_url": "https://world.openfoodfacts.org/product/6164001199195/safari-energy-drink",
+    "source_country": "Kenya"
+  }
+]
