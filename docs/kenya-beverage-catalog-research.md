@@ -14,14 +14,19 @@ The research covered beer, cider and RTD alcohol; whisky and bourbon; vodka, gin
 
 Naivas Online exposes a broad spirits catalogue and category counts, including 271 spirit products on the inspected page, with categories for whisky, gin, brandy, liqueur, rum, tequila and vodka. Carrefour Kenya exposes alcohol, wine, spirits, beer and cider listings and reports more than 50,000 total grocery items across the site. These retailer pages establish Kenya-market listing coverage, but the crawlable product text generally exposes retailer SKUs or Carrefour product IDs instead of GTINs.
 
+The catalog also includes Kenya retailer-listed juice and soda variants requested for the POS: Minute Maid Tropical, Mango and Delight Tropical; Del Monte apple, pineapple-mango, pineapple-orange, lemonade, energy and mango variants; Coca-Cola/Coke and Coke Zero; Fanta Passion, Blackcurrant and Orange; Pepsi; Mountain Dew; 7-Up; Mirinda Pineapple; and Pep Mixed Fruit. Their retailer source pages are stored in the app catalog records, and each has an image asset plus an internal POS scan key when a package-level GTIN was not exposed.
+
 ## Sources
 
 - Naivas spirits category: https://www.naivas.online/spirits
 - Naivas beer/cider category: https://www.naivas.online/beer/cider-cocktails
 - Naivas beverage category: https://www.naivas.online/beverage
+- Naivas cold beverage listings: https://www.naivas.online/cold-beverage
 - Carrefour Kenya alcohol category: https://www.carrefour.ke/mafken/en/c/FKEN21000000
+- Carrefour Kenya soft drinks category: https://www.carrefour.ke/mafken/en/c/FKEN1500000
 - Carrefour Kenya iced tea category: https://www.carrefour.ke/mafken/en/c/FKEN1560100
 - Carrefour Kenya energy drinks category: https://www.carrefour.ke/mafken/en/c/FKEN1550203
+- Carrefour Kenya Del Monte listings: https://www.carrefour.ke/mafken/en/c/61405
 - GS1 Kenya barcode verification service: https://www.gs1kenya.org/search/barcodes
 - Open Food Facts API/data documentation: https://world.openfoodfacts.org/data
 - Chrome Vodka record: https://world.openfoodfacts.org/product/6161101604031/chrome-vodka
