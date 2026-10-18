@@ -20,9 +20,14 @@ Deno.serve(async (req) => {
     db.from("shop_members").select("role,employment_status").eq("shop_id", shopId).eq("user_id", user.id).eq("employment_status", "active").maybeSingle(),
   ]);
   const isPlatformAdmin = Boolean(platform);
-  const isManager = membership?.role === "owner" || membership?.role === "manager";
-  if (!isPlatformAdmin && !isManager) return json({ error: "forbidden" }, 403);
-  if (!isPlatformAdmin && role === "owner") return json({ error: "owner_pass_platform_only" }, 403);
+  if (isPlatformAdmin) {
+    if (role !== "owner") return json({ error: "superadmin_owner_pass_only" }, 403);
+  } else {
+    if (!membership || membership.role !== "owner" || membership.employment_status !== "active") {
+      return json({ error: "forbidden" }, 403);
+    }
+    if (role !== "cashier") return json({ error: "only_waiter_role_supported" }, 400);
+  }
 
   const { data: shop } = await db.from("shops").select("id,name,status,business_type,business_size,feature_flags").eq("id", shopId).maybeSingle();
   if (!shop) return json({ error: "business_not_found" }, 404);

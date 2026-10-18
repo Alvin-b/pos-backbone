@@ -7,7 +7,7 @@ async function poll(status: string, claim = true) {
   let handler: (request: Request) => Promise<Response> = async () => new Response();
   const createUser = vi.fn();
   const results = [
-    { data: { id: 'qr', status, shop_id: status === 'pending' ? null : 'shop', role: 'cashier', expires_at: new Date(Date.now() + 600000).toISOString(), shops: { name: 'Shop', status: 'active' } } },
+    { data: { id: 'qr', status, shop_id: status === 'pending' ? null : 'shop', role: 'cashier', expires_at: new Date(Date.now() + 600000).toISOString(), processing_at: status === 'processing' ? new Date().toISOString() : null, shops: { name: 'Shop', status: 'active' } } },
     { data: claim ? { id: 'qr' } : null },
   ];
   const selects: string[] = [];

@@ -48,6 +48,11 @@ ALTER TABLE public.counter_stock_balances ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.counter_stock_movements ENABLE ROW LEVEL SECURITY;
 GRANT ALL ON public.counter_stock_balances, public.counter_stock_movements TO service_role;
 
+-- CREATE TABLE IF NOT EXISTS above migration 0015 cannot repair a pre-existing
+-- service_counters table. Ensure the conflict target exists before seed inserts.
+CREATE UNIQUE INDEX IF NOT EXISTS service_counters_shop_name_uidx
+  ON public.service_counters(shop_id, name);
+
 -- Every new business gets one initial service counter. Existing businesses with no
 -- counters receive the same default; businesses already configured are untouched.
 CREATE OR REPLACE FUNCTION public.seed_default_service_counter()

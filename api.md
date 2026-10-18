@@ -6,6 +6,12 @@ receiving, FIFO cost layers, daily totals, and platform administration. There
 is no public backend UI; clients use Supabase Auth, PostgREST, RPCs, Storage,
 and RLS.
 
+> [!CAUTION]
+> **Previously deployed databases:** audit the deployed schema and migration ledger
+> against `drizzle/migrations/meta/_journal.json` before applying any
+> SQL. Do **not** blindly replay historical migrations; apply only an approved
+> forward migration after confirming which objects already exist.
+
 ## 1. Connection settings
 
 | Setting | Value |
@@ -80,14 +86,16 @@ source of truth is `stock_batches` plus `sale_batch_allocations`.
 | Add/remove staff | yes | yes | no | no |
 | Suspend/close/reopen business | platform admin only | platform admin only | platform admin only | platform admin only |
 
-`owner` is reserved for the business creator/admin-created owner. Staff can be
-added by email only after they have registered their Supabase Auth account.
+`owner` is reserved for the platform-admin-enrolled business owner. Current
+onboarding supports only Owner and Waiter; Waiter is stored as `cashier` for
+compatibility. Historical `manager` and `inventory_clerk` roles remain in the
+database but are not offered by the current app.
 
 ```ts
 await supabase.rpc('add_member_by_email', {
   _shop: shopId,
   _email: 'cashier@shop.ke',
-  _role: 'cashier', // manager | inventory_clerk | cashier
+  _role: 'cashier', // Waiter; the only staff role currently offered
 });
 ```
 
@@ -108,6 +116,43 @@ await supabase.rpc('admin_set_business_status', {
   _reason: 'Billing review',
 });
 ```
+
+### Complete business profile and counter setup
+
+Use the forward onboarding RPC when a platform administrator is creating a
+tenant. It is `SECURITY DEFINER`, but it still requires
+`public.is_platform_admin()`; ordinary authenticated users and anonymous users
+must not call it. The RPC delegates profile creation to
+`admin_create_business`, then sets the counter inventory mode and adds counters
+to the existing seeded **Counter 1**.
+
+```ts
+const { data: shop } = await supabase.rpc('admin_create_business_profile', {
+  _name: 'Westlands Club',                 // text, required, 1..120 characters
+  _owner_email: 'owner@client.ke',         // text, default null
+  _business_type: 'big_club',              // text, default big_club
+  _business_size: 'large',                 // text, default medium
+  _counter_inventory_mode: 'per_counter',  // text, default shared
+  _counter_count: 4,                       // int, default 1, range 1..50
+});
+```
+
+The exact accepted values are:
+
+| SQL value | Product/profile label | Profile behavior |
+|---|---|---|
+| `big_club` | Bar/Club | Tables, employee management, working hours, FIFO inventory, and sales analytics enabled |
+| `counter_seller` | Liquor Store | Counter workflow, employee management, and FIFO inventory enabled; tables, working hours, and sales analytics disabled |
+
+`_business_size` accepts `small`, `medium`, or `large`. The
+`_counter_inventory_mode` accepts `shared` or `per_counter`. `_counter_count`
+is the total number of active counters and must be an integer from 1 through
+50; `1` keeps only the trigger-seeded `Counter 1`, while `4` creates
+`Counter 1` through `Counter 4`. The RPC returns the created `public.shops` row,
+including `business_type`, `business_size`, `feature_flags`, and
+`counter_inventory_mode`. Invalid values raise `invalid_business_name`,
+`invalid_business_type`, `invalid_business_size`,
+`invalid_counter_inventory_mode`, or `invalid_counter_count`.
 
 "Remove" is implemented as `closed`, not a destructive delete. This preserves
 sales, inventory, batches, and audit history for later reopening.
@@ -171,8 +216,8 @@ Public endpoints require the client publishable key, not an administrator secret
 |---|---|---|
 | `create-access-challenge` | `{}` | Public |
 | `poll-access-challenge` | `{ token }` | Public; possession of the QR token |
-| `approve-access-challenge` | `{ token, shop_id, role }` | Signed-in owner/manager or platform admin; owner enrollment is platform-only |
-| `create-access-pass` | `{ shop_id, role }` | Signed-in owner/manager or platform admin; owner passes are platform-only |
+| `approve-access-challenge` | `{ token, shop_id, role }` | Platform admin for Owner; active business owner for Waiter (`cashier`) |
+| `create-access-pass` | `{ shop_id, role }` | Platform admin for Owner; active business owner for Waiter (`cashier`) |
 | `redeem-access-pass` | `{ passkey }` | Public; possession of the one-time passkey |
 | `issue-superadmin-token` | `{}` | Signed-in platform admin |
 | `redeem-superadmin-token` | `{ token }` | Public; possession of the valid superadmin token |
@@ -183,20 +228,22 @@ token. Pending challenges have no shop until approval and return
 with a conditional `approved → processing` update before identity creation;
 concurrent polls cannot both return credentials. During processing, continue
 polling. After consumption, credentials are not returned again. Challenges
-expire after 10 minutes. If provisioning fails or processing remains stuck,
-create and approve a fresh QR rather than reusing the old token.
+expire after 10 minutes. A failed processor releases its claim for retry; a
+claim left in `processing` is conditionally recoverable after four minutes if
+the challenge is still valid. After expiry, create and approve a fresh QR.
 
 QR/passkey redemption returns `email` and `password` for
 `supabase.auth.signInWithPassword`; never log or persist these enrollment
 credentials. Superadmin redemption returns the normal session tokens instead.
 After signing in, call `my_account` and select the approved business.
 
-Deployment audit: `processing_at` already exists, but migration files named
-`0021_admin_create_business_profile.sql` and `0022_atomic_qr_claim.sql` are not
-present in this checkout. The deployed profile RPC references missing
-`shops.counter_inventory_mode` and `service_counters`; complete counter
-onboarding is blocked until those prerequisites are repaired. Do not replay
-historical migrations to resolve this.
+Forward migration files `0021_admin_create_business_profile.sql`,
+`0022_atomic_qr_claim.sql`, and `0023_owner_waiter_roles.sql` are present in this
+checkout. Their presence in Git does not prove they reached the live database.
+Before enabling business creation, audit the live ledger/schema for `0016` and
+`0021`; before deploying the current poll function, confirm `0022`; before
+relying on the role restrictions, confirm `0023`. Do not blindly replay
+historical migrations to resolve drift.
 
 ## 7. Typical mobile flows
 
@@ -269,7 +316,35 @@ const channel = supabase.channel(`shop-${shopId}`)
   keystore. APK code cannot be made impossible to reverse engineer; secrets and
   authorization must therefore live on the backend.
 
-## 10. Type generation
+## 10. Edge Functions
+
+The repository contains seven Supabase Edge Functions. Deploy every route to
+the linked project with the JWT setting shown below; the service-role secret is
+server-side only and must never be shipped in the APK.
+
+| Function | `verify_jwt` | Client purpose |
+|---|---:|---|
+| `create-access-challenge` | `false` | Create a staff QR enrollment challenge |
+| `poll-access-challenge` | `false` | Poll a challenge result |
+| `redeem-access-pass` | `false` | Redeem a one-time business/employee passkey |
+| `redeem-superadmin-token` | `false` | Redeem a rotating platform-admin token |
+| `approve-access-challenge` | `true` | Platform admin enrolls an Owner; active owner enrolls a Waiter |
+| `create-access-pass` | `true` | Platform admin issues an Owner pass; active owner issues a Waiter pass |
+| `issue-superadmin-token` | `true` | Authenticated platform admin issues a 10-minute token |
+
+QR sign-in is a phone-pairing flow: the requesting phone creates its challenge
+and polls automatically; the Superadmin app approves the selected business and
+role; the requesting phone then exchanges the one-time challenge for its
+session. Polling atomically claims an approved challenge in a short-lived
+`processing` state before identity and membership provisioning, so concurrent
+pollers cannot both receive credentials. Stale claims are recoverable after
+four minutes, while inactive memberships are never reactivated by retrying QR
+provisioning. If approval returns HTTP 400, its
+human-readable `message` names the invalid `token`, `shop_id`, or `role`; the
+same response also includes those fields in the structured `invalid_fields`
+array.
+
+## 11. Type generation
 
 `src/integrations/supabase/types.ts` is the generated TypeScript surface for the
 original project. Regenerate it from the deployed Supabase schema after applying
