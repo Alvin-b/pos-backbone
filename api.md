@@ -162,6 +162,42 @@ await supabase.rpc('adjust_stock', {
 });
 ```
 
+## QR and passkey sign-in endpoints
+
+Call the existing functions with `supabase.functions.invoke(name, { body })`.
+Public endpoints require the client publishable key, not an administrator secret.
+
+| Function | Body | Authentication |
+|---|---|---|
+| `create-access-challenge` | `{}` | Public |
+| `poll-access-challenge` | `{ token }` | Public; possession of the QR token |
+| `approve-access-challenge` | `{ token, shop_id, role }` | Signed-in owner/manager or platform admin; owner enrollment is platform-only |
+| `create-access-pass` | `{ shop_id, role }` | Signed-in owner/manager or platform admin; owner passes are platform-only |
+| `redeem-access-pass` | `{ passkey }` | Public; possession of the one-time passkey |
+| `issue-superadmin-token` | `{}` | Signed-in platform admin |
+| `redeem-superadmin-token` | `{ token }` | Public; possession of the valid superadmin token |
+
+Create a QR challenge, display its returned `token`, then poll using that exact
+token. Pending challenges have no shop until approval and return
+`{ status: 'pending' }`, not `qr_not_found`. An approved challenge is claimed
+with a conditional `approved → processing` update before identity creation;
+concurrent polls cannot both return credentials. During processing, continue
+polling. After consumption, credentials are not returned again. Challenges
+expire after 10 minutes. If provisioning fails or processing remains stuck,
+create and approve a fresh QR rather than reusing the old token.
+
+QR/passkey redemption returns `email` and `password` for
+`supabase.auth.signInWithPassword`; never log or persist these enrollment
+credentials. Superadmin redemption returns the normal session tokens instead.
+After signing in, call `my_account` and select the approved business.
+
+Deployment audit: `processing_at` already exists, but migration files named
+`0021_admin_create_business_profile.sql` and `0022_atomic_qr_claim.sql` are not
+present in this checkout. The deployed profile RPC references missing
+`shops.counter_inventory_mode` and `service_counters`; complete counter
+onboarding is blocked until those prerequisites are repaired. Do not replay
+historical migrations to resolve this.
+
 ## 7. Typical mobile flows
 
 ### First launch
