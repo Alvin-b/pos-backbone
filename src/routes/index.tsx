@@ -8,6 +8,10 @@ export const Route = createFileRoute("/")({
     meta: [
       { title: "Counter POS · Superadmin access" },
       { name: "description", content: "Protected rotating Superadmin token console." },
+      { property: "og:title", content: "Counter POS · Superadmin access" },
+      { property: "og:description", content: "Protected rotating Superadmin token console." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: SuperadminTokenPage,

@@ -15,8 +15,8 @@ async function poll(status: string, claim = true) {
     from: () => {
       const chain: Record<string, unknown> = {};
       for (const method of ['eq', 'gt', 'in', 'update']) chain[method] = () => chain;
-      chain.select = (columns: string) => { selects.push(columns); return chain; };
-      chain.maybeSingle = async () => results.shift();
+      chain['select'] = (columns: string) => { selects.push(columns); return chain; };
+      chain['maybeSingle'] = async () => results.shift();
       return chain;
     },
     auth: { admin: { createUser } },
