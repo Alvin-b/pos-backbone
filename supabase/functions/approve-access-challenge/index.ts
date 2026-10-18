@@ -9,8 +9,17 @@ Deno.serve(async (req) => {
   const token = String(body.token ?? "").trim();
   const shopId = String(body.shop_id ?? "").trim();
   const role = String(body.role ?? "cashier").trim();
-  if (!token || !shopId || !["owner", "manager", "inventory_clerk", "cashier"].includes(role))
-    return json({ error: "invalid_qr_approval" }, 400);
+  const invalidFields: string[] = [];
+  if (!token) invalidFields.push("token");
+  if (!shopId) invalidFields.push("shop_id");
+  if (!["owner", "manager", "inventory_clerk", "cashier"].includes(role)) invalidFields.push("role");
+  if (invalidFields.length) {
+    return json({
+      error: "invalid_qr_approval",
+      message: `Invalid enrollment approval request: ${invalidFields.join(", ")}.`,
+      invalid_fields: invalidFields,
+    }, 400);
+  }
   const db = adminClient();
   const [{ data: platform }, { data: membership }] = await Promise.all([
     db.from("platform_admins").select("user_id").eq("user_id", user.id).maybeSingle(),
