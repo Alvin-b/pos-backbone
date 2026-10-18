@@ -487,6 +487,41 @@ export type Database = {
           },
         ]
       }
+      service_counters: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          shop_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          shop_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          shop_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_counters_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shop_members: {
         Row: {
           created_at: string
@@ -535,6 +570,7 @@ export type Database = {
           closed_at: string | null
           closed_by: string | null
           closure_reason: string | null
+          counter_inventory_mode: string
           created_at: string
           created_by: string
           currency: string
@@ -555,6 +591,7 @@ export type Database = {
           closed_at?: string | null
           closed_by?: string | null
           closure_reason?: string | null
+          counter_inventory_mode?: string
           created_at?: string
           created_by: string
           currency?: string
@@ -575,6 +612,7 @@ export type Database = {
           closed_at?: string | null
           closed_by?: string | null
           closure_reason?: string | null
+          counter_inventory_mode?: string
           created_at?: string
           created_by?: string
           currency?: string
@@ -845,6 +883,7 @@ export type Database = {
           closed_at: string | null
           closed_by: string | null
           closure_reason: string | null
+          counter_inventory_mode: string
           created_at: string
           created_by: string
           currency: string
@@ -881,6 +920,7 @@ export type Database = {
           closed_at: string | null
           closed_by: string | null
           closure_reason: string | null
+          counter_inventory_mode: string
           created_at: string
           created_by: string
           currency: string
@@ -940,6 +980,7 @@ export type Database = {
           closed_at: string | null
           closed_by: string | null
           closure_reason: string | null
+          counter_inventory_mode: string
           created_at: string
           created_by: string
           currency: string
@@ -974,6 +1015,7 @@ export type Database = {
           closed_at: string | null
           closed_by: string | null
           closure_reason: string | null
+          counter_inventory_mode: string
           created_at: string
           created_by: string
           currency: string
