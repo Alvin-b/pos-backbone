@@ -23,6 +23,7 @@ export type Database = {
           created_at: string
           expires_at: string
           id: string
+          processing_at: string | null
           role: Database["public"]["Enums"]["shop_role"] | null
           shop_id: string | null
           status: string
@@ -36,6 +37,7 @@ export type Database = {
           created_at?: string
           expires_at?: string
           id?: string
+          processing_at?: string | null
           role?: Database["public"]["Enums"]["shop_role"] | null
           shop_id?: string | null
           status?: string
@@ -49,6 +51,7 @@ export type Database = {
           created_at?: string
           expires_at?: string
           id?: string
+          processing_at?: string | null
           role?: Database["public"]["Enums"]["shop_role"] | null
           shop_id?: string | null
           status?: string
@@ -833,6 +836,42 @@ export type Database = {
         Args: {
           _business_size?: string
           _business_type?: string
+          _name: string
+          _owner_email?: string
+        }
+        Returns: {
+          business_size: string
+          business_type: string
+          closed_at: string | null
+          closed_by: string | null
+          closure_reason: string | null
+          created_at: string
+          created_by: string
+          currency: string
+          feature_flags: Json
+          id: string
+          low_stock_threshold: number
+          name: string
+          owner_email: string | null
+          status: string
+          suspended_at: string | null
+          suspended_by: string | null
+          suspension_reason: string | null
+          timezone: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "shops"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      admin_create_business_profile: {
+        Args: {
+          _business_size?: string
+          _business_type?: string
+          _counter_count?: number
+          _counter_inventory_mode?: string
           _name: string
           _owner_email?: string
         }
