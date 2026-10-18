@@ -274,3 +274,8 @@ const channel = supabase.channel(`shop-${shopId}`)
 `src/integrations/supabase/types.ts` is the generated TypeScript surface for the
 original project. Regenerate it from the deployed Supabase schema after applying
 these migrations so RPC and new-column types stay current.
+
+## Business counters and lock state (added)
+- `shops.counter_inventory_mode`: `shared` | `per_counter`. Table `service_counters` (id, shop_id, name, active) — every business gets "Counter 1" automatically; members can read.
+- `my_account()` memberships now include `counter_inventory_mode`, `timezone`, `is_locked` and `can_sell_now`, plus top-level `server_time`.
+- The app must lock a staff screen ONLY when `is_locked` is true (business not active, employee suspended/terminated, or outside working hours). Employees with no working hours set are never locked. Do not lock by default after QR enrollment — call `my_account()` after signing in and use `is_locked`.
