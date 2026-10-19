@@ -78,26 +78,78 @@ function SuperadminTokenPage() {
     setError(null);
     setMessage(null);
     setAutoRefreshBlocked(false);
-    const result = await supabase.functions.invoke("issue-superadmin-token", { body: {} });
-    if (result.error) {
-      setError(result.error.message || "Only a platform administrator can issue this token.");
-      setToken(null);
-      setExpiresAt(null);
+
+    const callIssue = () => supabase.functions.invoke("issue-superadmin-token", { body: {} });
+    const readError = async (err: unknown) => {
+      const ctx = (err as { context?: Response }).context;
+      if (ctx && typeof ctx.json === "function") {
+        try {
+          const body = await ctx.clone().json();
+          return { code: String(body?.error ?? ""), text: String(body?.message ?? body?.error ?? "") };
+        } catch {
+          /* not JSON */
+        }
+      }
+      return { code: "", text: (err as Error)?.message ?? "" };
+    };
+
+    const { data: current } = await supabase.auth.getSession();
+    if (!current.session) {
+      setBusy(false);
       setAutoRefreshBlocked(true);
-    } else {
-      setToken(result.data?.token ?? null);
-      setExpiresAt(result.data?.expires_at ?? null);
-      setMessage("Token issued. Copy it privately before it expires.");
+      return;
     }
+
+    let result = await callIssue();
+    if (result.error) {
+      let info = await readError(result.error);
+      if (info.code === "session_expired" || info.code === "not_signed_in") {
+        // Stale or revoked session: refresh once, then retry.
+        const refreshed = await supabase.auth.refreshSession();
+        if (refreshed.error || !refreshed.data.session) {
+          await supabase.auth.signOut({ scope: "local" });
+          setToken(null);
+          setExpiresAt(null);
+          setError("Your sign-in has expired. Please sign in again.");
+          setBusy(false);
+          setAutoRefreshBlocked(true);
+          return;
+        }
+        result = await callIssue();
+        if (result.error) info = await readError(result.error);
+      }
+      if (result.error) {
+        setError(
+          info.code === "platform_admin_required"
+            ? "This account is not a platform administrator."
+            : info.text || "Only a platform administrator can issue this token.",
+        );
+        setToken(null);
+        setExpiresAt(null);
+        setAutoRefreshBlocked(true);
+        setBusy(false);
+        return;
+      }
+    }
+    const nextExpiry: string | null = result.data?.expires_at ?? null;
+    setToken(result.data?.token ?? null);
+    setExpiresAt(nextExpiry);
+    if (nextExpiry) {
+      setSecondsLeft(Math.max(0, Math.floor((new Date(nextExpiry).getTime() - Date.now()) / 1000)));
+    }
+    setMessage("Token issued. Copy it privately before it expires.");
     setBusy(false);
   }, []);
 
   useEffect(() => {
-    if (!session || busy || autoRefreshBlocked || (expiresAt && secondsLeft > 0)) return;
+    if (!session || busy || autoRefreshBlocked) return;
+    // Use expiresAt directly so a just-issued token is never immediately re-issued.
+    if (expiresAt && new Date(expiresAt).getTime() > Date.now()) return;
     void issueToken();
   }, [autoRefreshBlocked, busy, expiresAt, issueToken, secondsLeft, session]);
 
   async function signOut() {
+    setAutoRefreshBlocked(true);
     await supabase.auth.signOut();
     setToken(null);
     setExpiresAt(null);
