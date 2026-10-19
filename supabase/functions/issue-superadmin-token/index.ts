@@ -31,10 +31,26 @@ Deno.serve(async (req) => {
       console.error("Non-user token sent", raw.slice(0, 6));
       return json({ error: "not_signed_in", message: "Send the signed-in user's access token, not the publishable key." }, 401);
     }
-    const user = await caller(req);
+    let claims: Record<string, unknown> = {};
+    let header: Record<string, unknown> = {};
+    try {
+      const dec = (s: string) => JSON.parse(atob(s.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(s.length / 4) * 4, "=")));
+      header = dec(raw.split(".")[0]);
+      claims = dec(raw.split(".")[1]);
+    } catch { /* malformed */ }
+    const { data: userData, error: userError } = await adminClient().auth.getUser(raw);
+    const user = userData?.user ?? null;
     if (!user) {
-      console.error("User token rejected (expired or from another project)");
-      return json({ error: "session_expired", message: "Sign in again and retry." }, 401);
+      const exp = Number(claims.exp ?? 0) * 1000;
+      const expectedIss = `${Deno.env.get("SUPABASE_URL")}/auth/v1`;
+      console.error("User token rejected", JSON.stringify({
+        alg: header.alg, iss: claims.iss, expectedIss, role: claims.role, sub: claims.sub,
+        expired: exp > 0 && exp <= Date.now(), error: userError?.message, status: userError?.status,
+      }));
+      const reason = claims.iss && claims.iss !== expectedIss
+        ? "token_from_other_project"
+        : exp > 0 && exp <= Date.now() ? "token_expired" : (claims.role !== "authenticated" ? "not_a_user_token" : "session_revoked");
+      return json({ error: "session_expired", reason, message: "Sign in again and retry." }, 401);
     }
 
     const db = adminClient();
