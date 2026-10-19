@@ -24,8 +24,18 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
   try {
+    const auth = req.headers.get("Authorization") ?? "";
+    const raw = auth.replace(/^Bearer\s+/i, "");
+    if (!raw) return json({ error: "not_signed_in", message: "Missing Authorization: Bearer <user access token>." }, 401);
+    if (raw.startsWith("sb_") || raw.split(".").length !== 3) {
+      console.error("Non-user token sent", raw.slice(0, 6));
+      return json({ error: "not_signed_in", message: "Send the signed-in user's access token, not the publishable key." }, 401);
+    }
     const user = await caller(req);
-    if (!user) return json({ error: "unauthorized" }, 401);
+    if (!user) {
+      console.error("User token rejected (expired or from another project)");
+      return json({ error: "session_expired", message: "Sign in again and retry." }, 401);
+    }
 
     const db = adminClient();
     const { data: platformAdmin, error: adminCheckError } = await db
