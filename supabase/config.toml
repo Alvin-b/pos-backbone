@@ -9,13 +9,13 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.approve-access-challenge]
-verify_jwt = true
+verify_jwt = false
 
 [functions.create-access-pass]
-verify_jwt = true
+verify_jwt = false
 
 [functions.issue-superadmin-token]
-verify_jwt = true
+verify_jwt = false
 
 [functions.redeem-superadmin-token]
 verify_jwt = false
