@@ -354,3 +354,9 @@ these migrations so RPC and new-column types stay current.
 - `shops.counter_inventory_mode`: `shared` | `per_counter`. Table `service_counters` (id, shop_id, name, active) — every business gets "Counter 1" automatically; members can read.
 - `my_account()` memberships now include `counter_inventory_mode`, `timezone`, `is_locked` and `can_sell_now`, plus top-level `server_time`.
 - The app must lock a staff screen ONLY when `is_locked` is true (business not active, employee suspended/terminated, or outside working hours). Employees with no working hours set are never locked. Do not lock by default after QR enrollment — call `my_account()` after signing in and use `is_locked`.
+
+### Calling signed-in sign-in endpoints (issue-superadmin-token, create-access-pass, approve-access-challenge)
+Always send a *fresh* user access token. Access tokens expire after 1 hour; a stored token that was never refreshed returns
+`401 {"error":"session_expired","reason":"token_expired"}`. Before calling, use `supabase.auth.getSession()` (auto-refreshes)
+or `supabase.functions.invoke(...)`, which attaches the current session. On a 401, call `supabase.auth.refreshSession()` once and retry;
+if that fails, send the user back to the sign-in screen. Never send the publishable key as the bearer token.
