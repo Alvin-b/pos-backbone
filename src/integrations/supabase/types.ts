@@ -206,6 +206,35 @@ export type Database = {
         }
         Relationships: []
       }
+      dining_tables: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          shop_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          shop_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          shop_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dining_tables_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_working_hours: {
         Row: {
           enabled: boolean
@@ -750,6 +779,77 @@ export type Database = {
           },
         ]
       }
+      table_orders: {
+        Row: {
+          id: string
+          product_id: string
+          product_name: string
+          qty: number
+          sale_id: string
+          served_at: string
+          shop_id: string
+          table_id: string
+          total: number
+          unit_name: string
+          unit_price: number
+        }
+        Insert: {
+          id?: string
+          product_id: string
+          product_name: string
+          qty: number
+          sale_id: string
+          served_at?: string
+          shop_id: string
+          table_id: string
+          total: number
+          unit_name?: string
+          unit_price: number
+        }
+        Update: {
+          id?: string
+          product_id?: string
+          product_name?: string
+          qty?: number
+          sale_id?: string
+          served_at?: string
+          shop_id?: string
+          table_id?: string
+          total?: number
+          unit_name?: string
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "table_orders_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "table_orders_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: true
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "table_orders_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "table_orders_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "dining_tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1007,6 +1107,21 @@ export type Database = {
         Args: { _shop: string; _user: string }
         Returns: undefined
       }
+      create_dining_table: {
+        Args: { _name: string; _shop: string }
+        Returns: {
+          created_at: string
+          id: string
+          name: string
+          shop_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "dining_tables"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_shop: {
         Args: { _name: string }
         Returns: {
@@ -1208,6 +1323,35 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "sales"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      record_table_sale: {
+        Args: {
+          _product: string
+          _qty: number
+          _shop: string
+          _table: string
+          _unit_name: string
+          _unit_price: number
+        }
+        Returns: {
+          id: string
+          product_id: string
+          product_name: string
+          qty: number
+          sale_id: string
+          served_at: string
+          shop_id: string
+          table_id: string
+          total: number
+          unit_name: string
+          unit_price: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "table_orders"
           isOneToOne: true
           isSetofReturn: false
         }
