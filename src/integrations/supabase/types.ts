@@ -334,6 +334,7 @@ export type Database = {
           catalog_item_id: string | null
           category: string | null
           code: string
+          counter_id: string | null
           created_at: string
           id: string
           label_color: string | null
@@ -357,6 +358,7 @@ export type Database = {
           catalog_item_id?: string | null
           category?: string | null
           code: string
+          counter_id?: string | null
           created_at?: string
           id?: string
           label_color?: string | null
@@ -380,6 +382,7 @@ export type Database = {
           catalog_item_id?: string | null
           category?: string | null
           code?: string
+          counter_id?: string | null
           created_at?: string
           id?: string
           label_color?: string | null
@@ -400,6 +403,13 @@ export type Database = {
             columns: ["catalog_item_id"]
             isOneToOne: false
             referencedRelation: "catalog_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_counter_id_fkey"
+            columns: ["counter_id"]
+            isOneToOne: false
+            referencedRelation: "service_counters"
             referencedColumns: ["id"]
           },
           {
@@ -871,6 +881,47 @@ export type Database = {
           catalog_item_id: string | null
           category: string | null
           code: string
+          counter_id: string | null
+          created_at: string
+          id: string
+          label_color: string | null
+          label_text_color: string | null
+          name: string
+          photo_path: string | null
+          photo_url: string | null
+          price: number
+          product_type: Database["public"]["Enums"]["product_type"]
+          shop_id: string
+          size: string | null
+          stock: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "products"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      add_from_catalog_at_counter: {
+        Args: {
+          _catalog: string
+          _counter: string
+          _price: number
+          _qty: number
+          _shop: string
+          _unit_cost?: number
+        }
+        Returns: {
+          archived: boolean
+          average_cost: number
+          barcode: string | null
+          body_color: string | null
+          brand: string | null
+          catalog_item_id: string | null
+          category: string | null
+          code: string
+          counter_id: string | null
           created_at: string
           id: string
           label_color: string | null
@@ -909,6 +960,7 @@ export type Database = {
           catalog_item_id: string | null
           category: string | null
           code: string
+          counter_id: string | null
           created_at: string
           id: string
           label_color: string | null
@@ -949,6 +1001,7 @@ export type Database = {
           catalog_item_id: string | null
           category: string | null
           code: string
+          counter_id: string | null
           created_at: string
           id: string
           label_color: string | null
@@ -1164,6 +1217,7 @@ export type Database = {
           catalog_item_id: string | null
           category: string | null
           code: string
+          counter_id: string | null
           created_at: string
           id: string
           label_color: string | null
@@ -1210,6 +1264,7 @@ export type Database = {
           catalog_item_id: string | null
           category: string | null
           code: string
+          counter_id: string | null
           created_at: string
           id: string
           label_color: string | null
@@ -1249,6 +1304,7 @@ export type Database = {
           catalog_item_id: string | null
           category: string | null
           code: string
+          counter_id: string | null
           created_at: string
           id: string
           label_color: string | null
@@ -1382,6 +1438,7 @@ export type Database = {
           catalog_item_id: string | null
           category: string | null
           code: string
+          counter_id: string | null
           created_at: string
           id: string
           label_color: string | null
@@ -1426,6 +1483,7 @@ export type Database = {
           catalog_item_id: string | null
           category: string | null
           code: string
+          counter_id: string | null
           created_at: string
           id: string
           label_color: string | null
