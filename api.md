@@ -168,6 +168,7 @@ Stock and sales are never written directly from the client.
 | `undo_sale` | `_shop, _sale?` | Manager/owner-only undo; restores exact consumed batches |
 | `receive_stock_with_cost` | `_product, _qty, _unit_cost?, _supplier?, _reference?, _notes?` | Adds a new independently priced batch |
 | `add_from_catalog_with_cost` | `_shop, _catalog, _qty?, _price?, _unit_cost?` | Adds/receives catalog product and cost batch |
+| `add_from_catalog_at_counter` | `_catalog, _counter, _price, _qty, _shop, _unit_cost?` | Same, but assigns the product to a service counter; the counter must belong to the shop |
 | `adjust_stock` | `_product, _new_stock, _reason?` | Audited positive/negative count adjustment |
 | `register_product_with_cost` | product fields plus `_unit_cost` | Creates a custom product and opening cost batch |
 | `find_product` | `_shop, _query` | Active shop-scoped barcode/code/name search |
