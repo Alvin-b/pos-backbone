@@ -361,3 +361,10 @@ Always send a *fresh* user access token. Access tokens expire after 1 hour; a st
 `401 {"error":"session_expired","reason":"token_expired"}`. Before calling, use `supabase.auth.getSession()` (auto-refreshes)
 or `supabase.functions.invoke(...)`, which attaches the current session. On a 401, call `supabase.auth.refreshSession()` once and retry;
 if that fails, send the user back to the sign-in screen. Never send the publishable key as the bearer token.
+
+## Business type rules (updated)
+- `admin_create_business_profile` accepts `big_club`/`club` (Bar/Club) and `counter_seller`/`liquor_store` (Liquor Store); it still returns the `shops` row, now including `counter_count`.
+- Liquor Store: always 1 counter (`_counter_count` ignored), `feature_flags.tables = false`.
+- Bar/Club: `_counter_count` counters (1..50) plus starter tables Table 1, Table 2, Table 3, VIP 1, VIP 2.
+- Both types: employee_management, working_hours, fifo_inventory, sales_analytics all `true`.
+- `create_dining_table` raises `tables_disabled_for_business_type` when the business has tables turned off.
