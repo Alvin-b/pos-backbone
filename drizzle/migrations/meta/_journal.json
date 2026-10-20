@@ -2,33 +2,208 @@
   "version": "7",
   "dialect": "postgresql",
   "entries": [
-    { "idx": 0, "version": "7", "when": 1791631393023, "tag": "0000_migration", "breakpoints": true },
-    { "idx": 1, "version": "7", "when": 1791631393024, "tag": "0001_batch1_catalog", "breakpoints": true },
-    { "idx": 2, "version": "7", "when": 1791631393025, "tag": "0002_shop_roles", "breakpoints": true },
-    { "idx": 3, "version": "7", "when": 1791631393026, "tag": "0003_saas_security_inventory", "breakpoints": true },
-    { "idx": 4, "version": "7", "when": 1791631393027, "tag": "0004_access_passes", "breakpoints": true },
-    { "idx": 5, "version": "7", "when": 1791631393028, "tag": "0004_batch2_catalog", "breakpoints": true },
-    { "idx": 6, "version": "7", "when": 1791631393029, "tag": "0005_fix_admin_list_businesses", "breakpoints": true },
-    { "idx": 7, "version": "7", "when": 1791631393030, "tag": "0005_table_orders", "breakpoints": true },
-    { "idx": 8, "version": "7", "when": 1791631393031, "tag": "0006_employee_controls", "breakpoints": true },
-    { "idx": 9, "version": "7", "when": 1791631393032, "tag": "0007_qr_enrollment_challenges", "breakpoints": true },
-    { "idx": 10, "version": "7", "when": 1791631393033, "tag": "0008_atomic_access_redemption", "breakpoints": true },
-    { "idx": 11, "version": "7", "when": 1791631393034, "tag": "0009_business_profiles", "breakpoints": true },
-    { "idx": 12, "version": "7", "when": 1791631393035, "tag": "0010_repair_employee_profile_schema", "breakpoints": true },
-    { "idx": 13, "version": "7", "when": 1791631393036, "tag": "0011_apply_business_profile_repair", "breakpoints": true },
-    { "idx": 14, "version": "7", "when": 1791631393037, "tag": "0012_rotating_superadmin_token", "breakpoints": true },
-    { "idx": 15, "version": "7", "when": 1791631393038, "tag": "0013_owner_settings_audit_history", "breakpoints": true },
-    { "idx": 16, "version": "7", "when": 1791631393039, "tag": "0014_employee_profile_access_controls", "breakpoints": true },
-    { "idx": 17, "version": "7", "when": 1791631393040, "tag": "0015_counter_sales_reporting", "breakpoints": true },
-    { "idx": 18, "version": "7", "when": 1791631393041, "tag": "0016_counter_inventory_modes", "breakpoints": true },
-    { "idx": 19, "version": "7", "when": 1791631393042, "tag": "0017_catalog_expansion", "breakpoints": true },
-    { "idx": 20, "version": "7", "when": 1791631393043, "tag": "0018_catalog_completeness", "breakpoints": true },
-    { "idx": 21, "version": "7", "when": 1791631393044, "tag": "0019_verified_kenya_products", "breakpoints": true },
-    { "idx": 22, "version": "7", "when": 1791631393045, "tag": "0020_kenya_soft_drinks", "breakpoints": true },
-    { "idx": 23, "version": "7", "when": 1791631393046, "tag": "0021_admin_create_business_profile", "breakpoints": true },
-    { "idx": 24, "version": "7", "when": 1791631393047, "tag": "0022_atomic_qr_claim", "breakpoints": true },
-    { "idx": 25, "version": "7", "when": 1791631393048, "tag": "0023_owner_waiter_roles", "breakpoints": true },
-    { "idx": 26, "version": "7", "when": 1791631393049, "tag": "0024_owner_waiter_counter_runtime", "breakpoints": true },
-    { "idx": 27, "version": "7", "when": 1792492839669, "tag": "0025_business_hours_access", "breakpoints": true }
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1791631393023,
+      "tag": "0000_migration",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791631393024,
+      "tag": "0001_batch1_catalog",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791631393025,
+      "tag": "0002_shop_roles",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791631393026,
+      "tag": "0003_saas_security_inventory",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791631393027,
+      "tag": "0004_access_passes",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791631393028,
+      "tag": "0004_batch2_catalog",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791631393029,
+      "tag": "0005_fix_admin_list_businesses",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791631393030,
+      "tag": "0005_table_orders",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791631393031,
+      "tag": "0006_employee_controls",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791631393032,
+      "tag": "0007_qr_enrollment_challenges",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791631393033,
+      "tag": "0008_atomic_access_redemption",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791631393034,
+      "tag": "0009_business_profiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791631393035,
+      "tag": "0010_repair_employee_profile_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791631393036,
+      "tag": "0011_apply_business_profile_repair",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791631393037,
+      "tag": "0012_rotating_superadmin_token",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1791631393038,
+      "tag": "0013_owner_settings_audit_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1791631393039,
+      "tag": "0014_employee_profile_access_controls",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791631393040,
+      "tag": "0015_counter_sales_reporting",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791631393041,
+      "tag": "0016_counter_inventory_modes",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791631393042,
+      "tag": "0017_catalog_expansion",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791631393043,
+      "tag": "0018_catalog_completeness",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1791631393044,
+      "tag": "0019_verified_kenya_products",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1791631393045,
+      "tag": "0020_kenya_soft_drinks",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1791631393046,
+      "tag": "0021_admin_create_business_profile",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791631393047,
+      "tag": "0022_atomic_qr_claim",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1791631393048,
+      "tag": "0023_owner_waiter_roles",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791631393049,
+      "tag": "0024_owner_waiter_counter_runtime",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1792492839669,
+      "tag": "0025_business_hours_access",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1792564127537,
+      "tag": "0026_client_operation_idempotency",
+      "breakpoints": true
+    }
   ]
 }
