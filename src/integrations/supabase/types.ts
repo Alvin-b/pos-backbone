@@ -609,6 +609,7 @@ export type Database = {
           closed_at: string | null
           closed_by: string | null
           closure_reason: string | null
+          counter_count: number
           counter_inventory_mode: string
           created_at: string
           created_by: string
@@ -630,6 +631,7 @@ export type Database = {
           closed_at?: string | null
           closed_by?: string | null
           closure_reason?: string | null
+          counter_count?: number
           counter_inventory_mode?: string
           created_at?: string
           created_by: string
@@ -651,6 +653,7 @@ export type Database = {
           closed_at?: string | null
           closed_by?: string | null
           closure_reason?: string | null
+          counter_count?: number
           counter_inventory_mode?: string
           created_at?: string
           created_by?: string
@@ -1036,6 +1039,7 @@ export type Database = {
           closed_at: string | null
           closed_by: string | null
           closure_reason: string | null
+          counter_count: number
           counter_inventory_mode: string
           created_at: string
           created_by: string
@@ -1073,6 +1077,7 @@ export type Database = {
           closed_at: string | null
           closed_by: string | null
           closure_reason: string | null
+          counter_count: number
           counter_inventory_mode: string
           created_at: string
           created_by: string
@@ -1133,6 +1138,7 @@ export type Database = {
           closed_at: string | null
           closed_by: string | null
           closure_reason: string | null
+          counter_count: number
           counter_inventory_mode: string
           created_at: string
           created_by: string
@@ -1183,6 +1189,7 @@ export type Database = {
           closed_at: string | null
           closed_by: string | null
           closure_reason: string | null
+          counter_count: number
           counter_inventory_mode: string
           created_at: string
           created_by: string
