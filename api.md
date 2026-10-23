@@ -178,6 +178,47 @@ Legacy functions (`receive_stock`, `add_from_catalog`, `register_product`) stay
 available and create a zero-cost batch for backward compatibility. New clients
 should send unit cost whenever it is known.
 
+### Table bill settlement (migration 0027)
+
+After the forward migration `drizzle/migrations/0027_table_bill_settlement.sql`
+has been applied to the target database, settle the current open bill for one
+table with the signed-in member's client-generated UUID operation ID:
+
+```ts
+const { data: settlement, error } = await supabase.rpc('settle_table_bill', {
+  _shop: shopId,
+  _table: tableId,
+  _operation_id: operationId, // UUID; retain and reuse for retries
+  _payment_method: 'mpesa',   // cash | mpesa | card | other
+});
+```
+
+The authenticated caller must have the `owner`, `manager`, or `cashier` role in
+`_shop`. The RPC verifies that `_table` belongs to that shop, totals only
+`table_orders` rows for that shop/table whose `settlement_id` is null, records
+the amount as a positive whole-shilling integer, and links those existing order
+rows to the new settlement. It does not delete order history. Later orders have
+no settlement ID and therefore form the next open bill. Payment method is
+trimmed and lowercased before validation.
+
+The response is a JSON object with `settlement_id`, `table_id`, `amount`,
+`payment_method`, and `settled_at`. Repeating the same `_operation_id` in the
+same shop returns the original settlement (including its original amount and
+timestamp), making retries safe after a lost response. Reusing that ID for a
+different table or payment method raises `operation_id_reused`. Other rejection
+codes include `forbidden`, `invalid_operation_id`, `invalid_payment_method`,
+`table_not_found`, and `no_open_table_bill` (also raised when the open total is
+not positive). A new operation serializes against table-order inserts while the
+bill is closed.
+
+Migration 0027 adds `public.table_bill_settlements` and nullable
+`table_orders.settlement_id`; authenticated members may read settlement rows
+through RLS, while writes are performed by the security-definer RPC. A migration
+file or journal entry in this checkout does not prove that the live database has
+the schema. Audit the deployed schema and migration ledger, then apply this
+forward migration through the approved deployment process before calling the
+RPC; do not replay migrations blindly or use CI against the live project.
+
 ### Different purchase price example
 
 If the shop has 10 bottles at KSh 100 and receives 6 more at KSh 120:
@@ -351,10 +392,13 @@ array.
 original project. Regenerate it from the deployed Supabase schema after applying
 these migrations so RPC and new-column types stay current.
 
-## Business counters and lock state (added)
-- `shops.counter_inventory_mode`: `shared` | `per_counter`. Table `service_counters` (id, shop_id, name, active) — every business gets "Counter 1" automatically; members can read.
-- `my_account()` memberships now include `counter_inventory_mode`, `timezone`, `is_locked` and `can_sell_now`, plus top-level `server_time`.
-- The app must lock a staff screen ONLY when `is_locked` is true (business not active, employee suspended/terminated, or outside working hours). Employees with no working hours set are never locked. Do not lock by default after QR enrollment — call `my_account()` after signing in and use `is_locked`.
+## Business counters, feature flags, and working hours
+- `shops.counter_inventory_mode`: `shared` | `per_counter`. `service_counters` exposes `id`, `shop_id`, `name`, and `active` to members. A single counter is presented as the main counter; numbered labels are used only when a business has multiple counters.
+- `my_account()` returns the authenticated account and its memberships, including the server-provided business fields and `feature_flags`. It does **not** return `is_locked`, `can_sell_now`, or a top-level `server_time`; clients must not rely on those undocumented fields.
+- `get_business_hours(_shop uuid)` returns `{is_enabled, timezone, days}`. Each day contains `weekday` (0 Sunday through 6 Saturday), `open_time`, `close_time`, and `enabled`. Owners configure the shop schedule with `set_business_hours(_shop, _enabled, _days)`.
+- `can_sell_for_shop(_shop uuid)` returns a boolean. It checks current membership, the business-wide window when enabled, and the authenticated employee's enabled schedule when one exists. It uses the shop timezone (default `Africa/Nairobi`), treats windows as `[open, close)`, and supports overnight windows across weekdays. This boolean does not include a lock reason or current server time.
+- Use the server-provided `feature_flags` as the source of truth for feature visibility (for example, `tables` is disabled for `counter_seller`). UI hiding is not authorization: sales and table RPCs still enforce roles, business type, hours, and membership server-side.
+- The client may show a lock UX from `can_sell_for_shop`, but the backend must re-check the same policy for every protected mutation. An employee with no enabled personal schedule has no personal time restriction; business-wide hours still apply when enabled.
 
 ### Calling signed-in sign-in endpoints (issue-superadmin-token, create-access-pass, approve-access-challenge)
 Always send a *fresh* user access token. Access tokens expire after 1 hour; a stored token that was never refreshed returns

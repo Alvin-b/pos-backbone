@@ -1,0 +1,46 @@
+name: Validate backend database changes
+
+on:
+  pull_request:
+    paths:
+      - 'drizzle/**'
+      - 'drizzle.config.ts'
+      - 'package.json'
+      - 'bun.lock'
+      - '.github/workflows/validate-db.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'drizzle/**'
+      - 'drizzle.config.ts'
+      - 'package.json'
+      - 'bun.lock'
+      - '.github/workflows/validate-db.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-database:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+
+      # This checks Drizzle's migration journal/history. It does not connect to a database.
+      - name: Check migration history
+        run: bunx drizzle-kit check
+
+      # Type-check backend application sources, including generated API types.
+      - name: Type-check backend application
+        run: bunx tsc --noEmit --pretty false
+
+      # Keep the Drizzle schema entrypoint compilable without connecting to a database.
+      - name: Type-check Drizzle schema
+        run: bunx tsc --noEmit --skipLibCheck --target ES2022 --module ESNext --moduleResolution Bundler drizzle/schema.ts
