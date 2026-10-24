@@ -178,6 +178,14 @@ Legacy functions (`receive_stock`, `add_from_catalog`, `register_product`) stay
 available and create a zero-cost batch for backward compatibility. New clients
 should send unit cost whenever it is known.
 
+### Table management (migration 0029)
+
+Use `create_dining_table(_shop, _name)` to add a table. Owners and managers may
+remove a table with `delete_dining_table(_shop, _table)`. Deletion is an audited
+archive rather than a physical delete, so settled table-order history remains
+available. The delete RPC rejects a table that still has an open bill with
+`table_has_open_bill`; active-table reads should filter `archived=eq.false`.
+
 ### Table bill settlement (migration 0027)
 
 After the forward migration `drizzle/migrations/0027_table_bill_settlement.sql`

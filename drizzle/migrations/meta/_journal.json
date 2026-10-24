@@ -218,6 +218,13 @@
       "when": 1792829246700,
       "tag": "0028_table_bill_settlement_retry_lock",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1792829246701,
+      "tag": "0029_dining_table_management",
+      "breakpoints": true
     }
   ]
 }
