@@ -211,6 +211,13 @@
       "when": 1792739474848,
       "tag": "0027_table_bill_settlement",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1792829246700,
+      "tag": "0028_table_bill_settlement_retry_lock",
+      "breakpoints": true
     }
   ]
 }

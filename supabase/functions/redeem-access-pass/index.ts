@@ -4,7 +4,9 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
   const body = await req.json().catch(() => ({}));
-  const passkey = String(body.passkey ?? "").trim();
+  // Access-pass hashes are case-insensitive; normalize the Auth password too so
+  // a lower-case manual entry cannot create a credential different from its QR.
+  const passkey = String(body.passkey ?? "").trim().toUpperCase();
   if (!passkey) return json({ error: "passkey_required" }, 400);
   const db = adminClient();
   const hash = await sha256(passkey);

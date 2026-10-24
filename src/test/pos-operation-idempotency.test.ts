@@ -25,9 +25,12 @@ describe('POS operation migration contract', () => {
     expect(migration).not.toMatch(/DROP (?:FUNCTION|TABLE)/);
     for (const kind of kinds) expect(migration).toContain(`WHEN '${kind}' THEN`);
   });
-  it('registers the forward migration after 0023', () => {
+  it('keeps the POS idempotency and bill-settlement migrations ordered', () => {
+    const operationMigration = journal.entries.find((entry: { tag: string }) =>
+      entry.tag === '0026_client_operation_idempotency');
     const last = journal.entries.at(-1);
-    expect(last.tag).toBe('0026_client_operation_idempotency');
+    expect(operationMigration).toBeDefined();
+    expect(last.tag).toBe('0028_table_bill_settlement_retry_lock');
     expect(last.idx).toBe(journal.entries.at(-2).idx + 1);
     expect(last.when).toBeGreaterThan(journal.entries.at(-2).when);
   });
