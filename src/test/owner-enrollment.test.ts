@@ -12,11 +12,16 @@ type MockDbOptions = {
 function makeDb(options: MockDbOptions = {}) {
   const inserts: Array<{ table: string; row: unknown }> = [];
   const updates: Array<{ table: string; row: unknown }> = [];
+  const upserts: Array<{ table: string; row: unknown; conflict: unknown }> = [];
+  const singleIndices: Record<string, number> = {};
   const from = (table: string) => {
     let updatePayload: unknown = null;
     const chain: Record<string, unknown> = {};
     chain.select = () => chain;
     chain.eq = () => chain;
+    chain.gt = () => chain;
+    chain.lte = () => chain;
+    chain.is = () => chain;
     chain.update = (row: unknown) => {
       updatePayload = row;
       updates.push({ table, row });
@@ -26,18 +31,29 @@ function makeDb(options: MockDbOptions = {}) {
       inserts.push({ table, row });
       return { error: null };
     };
-    chain.maybeSingle = async () => ({
-      data: updatePayload !== null && table === 'access_challenges'
-        ? { id: 'challenge-1' }
-        : options.rows?.[table] ?? null,
-      error: null,
-    });
+    chain.upsert = async (row: unknown, conflict: unknown) => {
+      upserts.push({ table, row, conflict });
+      return { error: null };
+    };
+    chain.maybeSingle = async () => {
+      if (updatePayload !== null && table === 'access_challenges') {
+        return { data: { id: 'challenge-1' }, error: null };
+      }
+      const configuredRows = options.rows?.[table];
+      const singleIndex = singleIndices[table] ?? 0;
+      singleIndices[table] = singleIndex + 1;
+      const data = Array.isArray(configuredRows)
+        ? configuredRows[singleIndex] ?? null
+        : configuredRows ?? null;
+      return { data, error: null };
+    };
     return chain;
   };
   return {
     from,
     inserts,
     updates,
+    upserts,
     auth: { admin: { createUser: options.createUser ?? vi.fn(), listUsers: vi.fn() } },
     rpc: options.rpc ?? vi.fn(),
   };
@@ -83,6 +99,7 @@ function bindings(adminClient: () => unknown) {
 const passFunction = 'supabase/functions/create-access-pass/index.ts';
 const approveFunction = 'supabase/functions/approve-access-challenge/index.ts';
 const redeemFunction = 'supabase/functions/redeem-access-pass/index.ts';
+const pollFunction = 'supabase/functions/poll-access-challenge/index.ts';
 
 describe('owner Waiter enrollment', () => {
   it('issues a one-time cashier/Waiter passkey for an active owner', async () => {
@@ -140,6 +157,40 @@ describe('owner Waiter enrollment', () => {
     expect(response.status).toBe(403);
     expect(await response.json()).toMatchObject({ error: 'forbidden' });
     expect(db.updates).toHaveLength(0);
+  });
+
+  it('provisions and activates the Waiter when their approved phone QR is polled', async () => {
+    const createUser = vi.fn(async () => ({ data: { user: { id: 'waiter-1' } }, error: null }));
+    const db = makeDb({
+      rows: {
+        access_challenges: {
+          id: 'challenge-1', status: 'approved', shop_id: 'shop-1', role: 'cashier',
+          expires_at: new Date(Date.now() + 600_000).toISOString(), processing_at: null,
+          shops: { name: 'Test Bar', status: 'active' },
+        },
+        shop_members: [null, { employment_status: 'active' }],
+      },
+      createUser,
+    });
+    const handler = edgeHandler(pollFunction, bindings(() => db));
+    const response = await handler(request({ token: 'CPR1|valid-test-token' }));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      status: 'approved', email: 'cp-test@access.counterpos.invalid',
+      password: 'CPR1|valid-test-token', business_id: 'shop-1', role: 'cashier',
+    });
+    expect(createUser).toHaveBeenCalledWith(expect.objectContaining({
+      password: 'CPR1|valid-test-token',
+      user_metadata: { counterpos_access: true, business_id: 'shop-1', role: 'cashier' },
+    }));
+    expect(db.upserts).toContainEqual({
+      table: 'shop_members',
+      row: { shop_id: 'shop-1', user_id: 'waiter-1', role: 'cashier', employment_status: 'active' },
+      conflict: { onConflict: 'shop_id,user_id', ignoreDuplicates: true },
+    });
+    expect(db.updates.some(({ table, row }) =>
+      table === 'access_challenges' && (row as { status?: string }).status === 'consumed')).toBe(true);
   });
 
   it('redeems lower-case manual passkey entry with the canonical password', async () => {
