@@ -30,7 +30,7 @@ describe('POS operation migration contract', () => {
       entry.tag === '0026_client_operation_idempotency');
     const last = journal.entries.at(-1);
     expect(operationMigration).toBeDefined();
-    expect(last.tag).toBe('0028_table_bill_settlement_retry_lock');
+    expect(last.tag).toBe('0030_employee_profiles_and_recovery');
     expect(last.idx).toBe(journal.entries.at(-2).idx + 1);
     expect(last.when).toBeGreaterThan(journal.entries.at(-2).when);
   });

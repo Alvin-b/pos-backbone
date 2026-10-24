@@ -380,6 +380,7 @@ server-side only and must never be shipped in the APK.
 | `redeem-superadmin-token` | `false` | Redeem a rotating platform-admin token |
 | `approve-access-challenge` | `true` | Platform admin enrolls an Owner; active owner enrolls a Waiter |
 | `create-access-pass` | `true` | Platform admin issues an Owner pass; active owner issues a Waiter pass |
+| `create-employee-recovery-pass` | `true` | Active owner issues a one-use recovery credential for an existing non-owner employee |
 | `issue-superadmin-token` | `true` | Authenticated platform admin issues a 10-minute token |
 
 QR sign-in is a phone-pairing flow: the requesting phone creates its challenge
@@ -393,6 +394,14 @@ provisioning. If approval returns HTTP 400, its
 human-readable `message` names the invalid `token`, `shop_id`, or `role`; the
 same response also includes those fields in the structured `invalid_fields`
 array.
+
+Employee recovery is available after migration 0030 is deployed. The owner selects
+the existing employee profile and issues a short-lived QR/code; redemption rotates
+the password on that same Auth identity and returns a session, rather than creating
+a duplicate user or leaving a reusable password. Recovery is one-time, business-
+scoped, and audited. Deploy the updated `redeem-access-pass` function together with
+`create-employee-recovery-pass`; a local migration file alone does not change the
+live project.
 
 ## 11. Type generation
 

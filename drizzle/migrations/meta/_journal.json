@@ -225,6 +225,13 @@
       "when": 1792829246701,
       "tag": "0029_dining_table_management",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1792870502551,
+      "tag": "0030_employee_profiles_and_recovery",
+      "breakpoints": true
     }
   ]
 }

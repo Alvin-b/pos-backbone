@@ -276,6 +276,56 @@ export type Database = {
           },
         ]
       }
+      employee_recovery_passes: {
+        Row: {
+          claim_expires_at: string | null
+          claim_token: string | null
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          pass_hash: string
+          redeemed_at: string | null
+          revoked_at: string | null
+          shop_id: string
+          user_id: string
+        }
+        Insert: {
+          claim_expires_at?: string | null
+          claim_token?: string | null
+          created_at?: string
+          created_by: string
+          expires_at?: string
+          id?: string
+          pass_hash: string
+          redeemed_at?: string | null
+          revoked_at?: string | null
+          shop_id: string
+          user_id: string
+        }
+        Update: {
+          claim_expires_at?: string | null
+          claim_token?: string | null
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          id?: string
+          pass_hash?: string
+          redeemed_at?: string | null
+          revoked_at?: string | null
+          shop_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_recovery_passes_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_admin_tokens: {
         Row: {
           auth_user_id: string
@@ -564,6 +614,7 @@ export type Database = {
       shop_members: {
         Row: {
           created_at: string
+          display_name: string | null
           employment_status: string
           role: Database["public"]["Enums"]["shop_role"]
           shop_id: string
@@ -574,6 +625,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          display_name?: string | null
           employment_status?: string
           role?: Database["public"]["Enums"]["shop_role"]
           shop_id: string
@@ -584,6 +636,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          display_name?: string | null
           employment_status?: string
           role?: Database["public"]["Enums"]["shop_role"]
           shop_id?: string
@@ -1122,6 +1175,7 @@ export type Database = {
       admin_list_shop_members: {
         Args: { _shop: string }
         Returns: {
+          display_name: string | null
           email: string
           employment_status: string
           member_user_id: string
@@ -1129,6 +1183,10 @@ export type Database = {
           schedule: Json
           status_reason: string
         }[]
+      }
+      set_employee_display_name: {
+        Args: { _display_name: string; _shop: string; _user: string }
+        Returns: undefined
       }
       admin_set_business_status: {
         Args: { _reason?: string; _shop: string; _status: string }

@@ -14,6 +14,9 @@ verify_jwt = false
 [functions.create-access-pass]
 verify_jwt = false
 
+[functions.create-employee-recovery-pass]
+verify_jwt = true
+
 [functions.issue-superadmin-token]
 verify_jwt = false
 

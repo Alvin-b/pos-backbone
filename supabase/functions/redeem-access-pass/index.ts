@@ -1,4 +1,19 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.0";
 import { adminClient, corsHeaders, json, sha256, syntheticEmail } from "../_shared/access.ts";
+
+function newCredential() {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
+}
+
+function recoveryError(reason: string) {
+  if (reason === "passkey_expired_or_used") return json({ error: reason }, 401);
+  if (reason === "business_not_active") return json({ error: reason }, 409);
+  if (reason === "employee_inactive") return json({ error: reason }, 403);
+  if (reason === "employee_recovery_in_progress") return json({ error: reason }, 409);
+  if (reason === "employee_not_found") return json({ error: "employee_identity_not_found" }, 404);
+  return json({ error: "could_not_redeem_employee_recovery" }, 500);
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -11,7 +26,67 @@ Deno.serve(async (req) => {
   const db = adminClient();
   const hash = await sha256(passkey);
 
-  const { data: pass } = await db.from("access_passes").select("id,shop_id,role,expires_at,redeemed_at,revoked_at,shops!inner(name,status)").eq("pass_hash", hash).maybeSingle();
+  // Recovery codes are not identities/passwords. Claim atomically, rotate the
+  // password on the existing Auth user, then return a fresh session.
+  const { data: recovery, error: recoveryErrorResult } = await db.rpc(
+    "redeem_employee_recovery_pass_atomic",
+    { _pass_hash: hash },
+  );
+  if (!recoveryErrorResult && recovery) {
+    const claim = recovery as {
+      user_id: string;
+      business_id: string;
+      business_name: string;
+      role: string;
+      claim_token: string;
+    };
+    const { data: identityResult, error: identityError } = await db.auth.admin.getUserById(claim.user_id);
+    const identity = identityResult?.user;
+    if (identityError || !identity?.email) return json({ error: "employee_identity_not_found" }, 404);
+
+    const rotatedPassword = newCredential();
+    const { error: rotateError } = await db.auth.admin.updateUserById(claim.user_id, {
+      password: rotatedPassword,
+    });
+    if (rotateError) return json({ error: "could_not_rotate_employee_credential" }, 500);
+
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!anonKey) return json({ error: "could_not_create_employee_session" }, 500);
+    const sessionClient = createClient(Deno.env.get("SUPABASE_URL")!, anonKey, {
+      auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
+    });
+    const { data: signedIn, error: signInError } = await sessionClient.auth.signInWithPassword({
+      email: identity.email,
+      password: rotatedPassword,
+    });
+    if (signInError || !signedIn.session) return json({ error: "could_not_create_employee_session" }, 500);
+
+    const { error: completeError } = await db.rpc("complete_employee_recovery_pass", {
+      _pass_hash: hash,
+      _claim_token: claim.claim_token,
+    });
+    if (completeError) return json({ error: "could_not_finalize_employee_recovery" }, 409);
+
+    return json({
+      status: "redeemed",
+      email: identity.email,
+      user_id: claim.user_id,
+      access_token: signedIn.session.access_token,
+      refresh_token: signedIn.session.refresh_token,
+      business_id: claim.business_id,
+      business_name: claim.business_name,
+      role: claim.role,
+    });
+  }
+  const recoveryReason = String((recoveryErrorResult as { message?: string } | null)?.message ?? "").trim();
+  if (recoveryReason && recoveryReason !== "employee_recovery_pass_not_found") {
+    return recoveryError(recoveryReason);
+  }
+
+  const { data: pass } = await db.from("access_passes")
+    .select("id,shop_id,role,expires_at,redeemed_at,revoked_at,shops!inner(name,status)")
+    .eq("pass_hash", hash)
+    .maybeSingle();
   if (!pass) return json({ error: "passkey_not_found" }, 404);
   if (pass.redeemed_at || pass.revoked_at || new Date(pass.expires_at).getTime() <= Date.now()) return json({ error: "passkey_expired_or_used" }, 401);
   const shop = Array.isArray(pass.shops) ? pass.shops[0] : pass.shops;
@@ -28,7 +103,7 @@ Deno.serve(async (req) => {
   if (!userId) return json({ error: "identity_not_created" }, 500);
 
   // The server-side RPC enforces one-time use and attaches the membership atomically.
-  const { data: redeemed, error: redeemError } = await db.rpc("redeem_access_pass_atomic", { _pass_hash: hash, _user: userId });
+  const { error: redeemError } = await db.rpc("redeem_access_pass_atomic", { _pass_hash: hash, _user: userId });
   if (redeemError) {
     const reason = String((redeemError as { message?: string }).message ?? "").trim();
     if (reason === "passkey_expired_or_used") return json({ error: "passkey_expired_or_used" }, 401);
