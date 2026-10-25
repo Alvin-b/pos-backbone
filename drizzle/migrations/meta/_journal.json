@@ -232,6 +232,13 @@
       "when": 1792870502551,
       "tag": "0030_employee_profiles_and_recovery",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1792904163830,
+      "tag": "0031_qr_enrollment_compatibility",
+      "breakpoints": true
     }
   ]
 }

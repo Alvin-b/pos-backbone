@@ -79,6 +79,12 @@ Deno.serve(async (req) => {
     });
   }
   const recoveryReason = String((recoveryErrorResult as { message?: string } | null)?.message ?? "").trim();
+  // Older deployments do not have the employee recovery RPC yet. That must
+  // not block the original one-time enrollment pass flow.
+  const recoveryRpcMissing = /function .*redeem_employee_recovery_pass_atomic.*does not exist|could not find the function|schema cache/i.test(recoveryReason);
+  if (recoveryRpcMissing) {
+    // Continue with the ordinary access_passes lookup below.
+  } else
   if (recoveryReason && recoveryReason !== "employee_recovery_pass_not_found") {
     return recoveryError(recoveryReason);
   }
