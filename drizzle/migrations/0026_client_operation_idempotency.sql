@@ -1,6 +1,8 @@
 -- Forward-only Android outbox API. Existing RPC signatures and grants are untouched.
 -- A UUID is unique across ALL mutation kinds within a tenant, not just per kind.
-CREATE TABLE public.client_operations (
+-- IF NOT EXISTS keeps this forward repair safe when the table was created by a
+-- previous partial deployment.
+CREATE TABLE IF NOT EXISTS public.client_operations (
   shop_id uuid NOT NULL REFERENCES public.shops(id) ON DELETE CASCADE,
   operation_id uuid NOT NULL,
   actor_user_id uuid NOT NULL,
@@ -23,7 +25,7 @@ GRANT ALL ON public.client_operations TO service_role;
 COMMENT ON TABLE public.client_operations IS
   'Private idempotency ledger. Retain completed rows for the entire client retry lifetime; deleting one permits execution again.';
 --> statement-breakpoint
-CREATE FUNCTION public.apply_pos_operation(
+CREATE OR REPLACE FUNCTION public.apply_pos_operation(
   _shop uuid, _operation_id uuid, _kind text, _payload jsonb
 )
 RETURNS jsonb

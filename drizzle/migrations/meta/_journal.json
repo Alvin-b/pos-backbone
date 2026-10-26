@@ -239,6 +239,13 @@
       "when": 1792904163830,
       "tag": "0031_qr_enrollment_compatibility",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1793058307343,
+      "tag": "0032_counter_schema_repair",
+      "breakpoints": true
     }
   ]
 }
