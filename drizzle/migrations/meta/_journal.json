@@ -253,6 +253,13 @@
       "when": 1793061444201,
       "tag": "0033_realtime_business_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1793062812069,
+      "tag": "0034_tenant_staff_and_inventory_metrics",
+      "breakpoints": true
     }
   ]
 }
