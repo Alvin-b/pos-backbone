@@ -246,6 +246,13 @@
       "when": 1793058307343,
       "tag": "0032_counter_schema_repair",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1793061444201,
+      "tag": "0033_realtime_business_tables",
+      "breakpoints": true
     }
   ]
 }
