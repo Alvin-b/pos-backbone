@@ -267,6 +267,13 @@
       "when": 1793272605000,
       "tag": "0035_repair_table_bill_settlement",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1793275684000,
+      "tag": "0036_qr_reenrollment_identity",
+      "breakpoints": true
     }
   ]
 }

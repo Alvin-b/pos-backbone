@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
   const { data: challenge, error: readError } = await db
     .from("access_challenges")
     // A pending challenge has no shop yet; an inner join would hide a valid QR.
-    .select("id,status,shop_id,role,expires_at,processing_at,shops(name,status)")
+    .select("id,status,shop_id,role,device_key_hash,expires_at,processing_at,shops(name,status)")
     .eq("token_hash", hash)
     .maybeSingle();
   if (readError) return json({ error: "could_not_read_qr" }, 500);
@@ -90,26 +90,65 @@ Deno.serve(async (req) => {
       .eq("processing_at", claimTime);
   };
 
-  const email = syntheticEmail(hash);
-  const { data: created, error: createError } = await db.auth.admin.createUser({
-    email,
-    password: token,
-    email_confirm: true,
-    user_metadata: { counterpos_access: true, business_id: challenge.shop_id, role: challenge.role },
-  });
-  if (createError && !createError.message.toLowerCase().includes("already registered")) {
-    await releaseClaim();
-    return json({ error: "could_not_create_identity" }, 500);
-  }
-
-  let userId = created.user?.id;
-  if (!userId) {
-    const { data: existing, error: listError } = await db.auth.admin.listUsers({ page: 1, perPage: 1000 });
-    if (listError) {
+  const deviceKeyHash = String(challenge.device_key_hash ?? "").trim();
+  let userId: string | undefined;
+  let email = "";
+  if (deviceKeyHash) {
+    const { data: identity, error: identityError } = await db
+      .from("access_device_identities")
+      .select("user_id")
+      .eq("device_key_hash", deviceKeyHash)
+      .eq("shop_id", challenge.shop_id)
+      .eq("role", challenge.role)
+      .maybeSingle();
+    if (identityError) {
       await releaseClaim();
       return json({ error: "could_not_find_identity" }, 500);
     }
-    userId = existing.users.find((user) => user.email === email)?.id;
+    if (identity?.user_id) {
+      const { data: existingUser, error: existingUserError } = await db.auth.admin.getUserById(identity.user_id);
+      if (existingUserError || !existingUser.user) {
+        await releaseClaim();
+        return json({ error: "could_not_find_identity" }, 500);
+      }
+      userId = existingUser.user.id;
+      email = existingUser.user.email ?? syntheticEmail(hash);
+      const { error: rotateError } = await db.auth.admin.updateUserById(userId, {
+        password: token,
+        user_metadata: {
+          ...(existingUser.user.user_metadata ?? {}),
+          counterpos_access: true,
+          business_id: challenge.shop_id,
+          role: challenge.role,
+        },
+      });
+      if (rotateError) {
+        await releaseClaim();
+        return json({ error: "could_not_rotate_identity" }, 500);
+      }
+    }
+  }
+  if (!userId) {
+    email = syntheticEmail(hash);
+    const { data: created, error: createError } = await db.auth.admin.createUser({
+      email,
+      password: token,
+      email_confirm: true,
+      user_metadata: { counterpos_access: true, business_id: challenge.shop_id, role: challenge.role },
+    });
+    if (createError && !createError.message.toLowerCase().includes("already registered")) {
+      await releaseClaim();
+      return json({ error: "could_not_create_identity" }, 500);
+    }
+    userId = created.user?.id;
+    if (!userId) {
+      const { data: existing, error: listError } = await db.auth.admin.listUsers({ page: 1, perPage: 1000 });
+      if (listError) {
+        await releaseClaim();
+        return json({ error: "could_not_find_identity" }, 500);
+      }
+      userId = existing.users.find((user) => user.email === email)?.id;
+    }
   }
   if (!userId) {
     await releaseClaim();
@@ -154,6 +193,20 @@ Deno.serve(async (req) => {
   if (!activeMember || activeMember.employment_status !== "active") {
     await releaseClaim();
     return json({ error: "employee_inactive" }, 403);
+  }
+
+  if (deviceKeyHash) {
+    const { error: identityWriteError } = await db.from("access_device_identities").upsert({
+      device_key_hash: deviceKeyHash,
+      shop_id: challenge.shop_id,
+      user_id: userId,
+      role: challenge.role,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "device_key_hash" });
+    if (identityWriteError) {
+      await releaseClaim();
+      return json({ error: "could_not_save_identity" }, 500);
+    }
   }
 
   const { data: consumed, error: consumeError } = await db
