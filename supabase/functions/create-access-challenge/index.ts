@@ -10,7 +10,12 @@ Deno.serve(async (req) => {
   const db = adminClient();
   const row: Record<string, string> = { token_hash: await sha256(token) };
   if (deviceId) row.device_key_hash = await sha256(`counterpos-device:${deviceId}`);
-  const { error } = await db.from("access_challenges").insert(row);
+  let { error } = await db.from("access_challenges").insert(row);
+  // Keep old connected projects usable while the device-identity migration is
+  // being applied. Reenrollment reuse becomes active once the migration lands.
+  if (error && deviceId && /column|schema cache|device_key_hash/i.test(error.message)) {
+    ({ error } = await db.from("access_challenges").insert({ token_hash: row.token_hash }));
+  }
   if (error) return json({ error: "could_not_create_qr_challenge" }, 500);
   return json({ token, expires_in_seconds: 600 });
 });

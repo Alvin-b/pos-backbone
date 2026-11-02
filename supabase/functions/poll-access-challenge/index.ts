@@ -93,6 +93,7 @@ Deno.serve(async (req) => {
   const deviceKeyHash = String(challenge.device_key_hash ?? "").trim();
   let userId: string | undefined;
   let email = "";
+  let identityTableAvailable = Boolean(deviceKeyHash);
   if (deviceKeyHash) {
     const { data: identity, error: identityError } = await db
       .from("access_device_identities")
@@ -101,10 +102,11 @@ Deno.serve(async (req) => {
       .eq("shop_id", challenge.shop_id)
       .eq("role", challenge.role)
       .maybeSingle();
-    if (identityError) {
+    if (identityError && !/relation|schema cache|access_device_identities/i.test(identityError.message)) {
       await releaseClaim();
       return json({ error: "could_not_find_identity" }, 500);
     }
+    if (identityError) identityTableAvailable = false;
     if (identity?.user_id) {
       const { data: existingUser, error: existingUserError } = await db.auth.admin.getUserById(identity.user_id);
       if (existingUserError || !existingUser.user) {
@@ -195,7 +197,7 @@ Deno.serve(async (req) => {
     return json({ error: "employee_inactive" }, 403);
   }
 
-  if (deviceKeyHash) {
+  if (deviceKeyHash && identityTableAvailable) {
     const { error: identityWriteError } = await db.from("access_device_identities").upsert({
       device_key_hash: deviceKeyHash,
       shop_id: challenge.shop_id,
