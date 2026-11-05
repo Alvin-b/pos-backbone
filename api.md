@@ -84,6 +84,8 @@ source of truth is `stock_batches` plus `sale_batch_allocations`.
 | Edit product price/name/photo | yes | yes | no | no |
 | Undo a sale | yes | yes | no | no |
 | Add/remove staff | yes | yes | no | no |
+| Create dining tables | yes | yes | no | yes |
+| Archive/delete dining tables | yes | yes | no | no |
 | Suspend/close/reopen business | platform admin only | platform admin only | platform admin only | platform admin only |
 
 `owner` is reserved for the platform-admin-enrolled business owner. Current
@@ -178,19 +180,27 @@ Legacy functions (`receive_stock`, `add_from_catalog`, `register_product`) stay
 available and create a zero-cost batch for backward compatibility. New clients
 should send unit cost whenever it is known.
 
-### Table management (migration 0029)
+### Table management (migration 0037)
 
-Use `create_dining_table(_shop, _name)` to add a table. Owners and managers may
-remove a table with `delete_dining_table(_shop, _table)`. Deletion is an audited
-archive rather than a physical delete, so settled table-order history remains
-available. The delete RPC rejects a table that still has an open bill with
-`table_has_open_bill`; active-table reads should filter `archived=eq.false`.
+Owners, managers, and waiters (`cashier`) may create tables with
+`create_dining_table(_shop, _name)`. Creation is idempotent for a repeated name;
+if that name belongs to an archived table, the same table is restored. Only
+owners and managers may archive a table with
+`delete_dining_table(_shop, _table)`. Archiving is audited and preserves settled
+table-order history; the RPC rejects a table that still has an open bill with
+`table_has_open_bill`. Active-table reads should filter `archived=eq.false`.
 
-### Table bill settlement (migration 0027)
+Migration `0037_table_management_alignment.sql` aligns these RPC permissions and
+soft-delete rules with the Android client. Previously deployed databases should
+audit their migration ledger and apply this approved forward migration rather
+than replaying migration `0029`.
 
-After the forward migration `drizzle/migrations/0027_table_bill_settlement.sql`
-has been applied to the target database, settle the current open bill for one
-table with the signed-in member's client-generated UUID operation ID:
+### Table bill settlement (migrations 0027 and 0035)
+
+After the approved settlement repair migration
+`drizzle/migrations/0035_repair_table_bill_settlement.sql` has been applied to
+the target database, settle the current open bill for one table with the
+signed-in member's client-generated UUID operation ID:
 
 ```ts
 const { data: settlement, error } = await supabase.rpc('settle_table_bill', {
@@ -219,13 +229,22 @@ codes include `forbidden`, `invalid_operation_id`, `invalid_payment_method`,
 not positive). A new operation serializes against table-order inserts while the
 bill is closed.
 
-Migration 0027 adds `public.table_bill_settlements` and nullable
-`table_orders.settlement_id`; authenticated members may read settlement rows
-through RLS, while writes are performed by the security-definer RPC. A migration
-file or journal entry in this checkout does not prove that the live database has
-the schema. Audit the deployed schema and migration ledger, then apply this
-forward migration through the approved deployment process before calling the
-RPC; do not replay migrations blindly or use CI against the live project.
+Migration 0027 introduced `public.table_bill_settlements` and nullable
+`table_orders.settlement_id`; migration 0035 idempotently repairs/ensures these
+objects and defines the current settlement RPC. Authenticated members may read
+settlement rows through RLS, while writes are performed by the security-definer
+RPC. A migration file or journal entry in this checkout does not prove that the
+live database has the schema. Audit the deployed schema and migration ledger,
+then apply the approved forward migration through the deployment process before
+calling the RPC; do not replay migrations blindly or use CI against the live
+project.
+
+Migration `0038_table_orders_total_compatibility.sql` adds a generated, read-only
+`total` alias when a legacy table-order schema exposes only `total_ksh`, so the
+settlement RPC can aggregate the bill. It does not convert other legacy column
+names or make the generated alias writable. Verify the deployed `table_orders`
+schema before applying it; do not use it as a substitute for the canonical
+backend table-order schema.
 
 ### Different purchase price example
 

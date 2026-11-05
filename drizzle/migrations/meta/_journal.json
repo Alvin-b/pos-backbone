@@ -274,6 +274,20 @@
       "when": 1793275684000,
       "tag": "0036_qr_reenrollment_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1793884631333,
+      "tag": "0037_table_management_alignment",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1793884631334,
+      "tag": "0038_table_orders_total_compatibility",
+      "breakpoints": true
     }
   ]
 }
