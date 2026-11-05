@@ -288,6 +288,13 @@
       "when": 1793884631334,
       "tag": "0038_table_orders_total_compatibility",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1793884631335,
+      "tag": "0040_counter_sale_payment_method",
+      "breakpoints": true
     }
   ]
 }
