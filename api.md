@@ -41,7 +41,9 @@ const { data: account } = await supabase.rpc('my_account');
 // account.user_id
 // account.email
 // account.is_platform_admin
-// account.memberships: [{ shop_id, shop_name, role, status, currency, low_stock_threshold }]
+// account.memberships: [{ shop_id, shop_name, role, status, business_type,
+//   business_size, feature_flags, counter_inventory_mode, counter_count,
+//   currency, low_stock_threshold }]
 ```
 
 A business is the tenant/account boundary. All staff are memberships in that
@@ -50,11 +52,27 @@ business. A suspended or closed business retains its inventory and sales, but
 owner and every staff member. The owner cannot reopen it; only a platform admin
 can set the status back to `active`.
 
-Create a business after a normal user signs up:
+After a normal user signs up or signs in, create a configured business profile:
 
 ```ts
-await supabase.rpc('create_shop', { _name: 'My Counter' });
+const { data: shop } = await supabase.rpc('create_owner_business_profile', {
+  _name: 'My Counter',
+  _business_type: 'big_club',             // big_club | counter_seller
+  _business_size: 'medium',               // small | medium | large; club only
+  _counter_inventory_mode: 'shared',      // shared | per_counter; club only
+  _counter_count: 1,                      // 1..50; club only
+});
 ```
+
+This security-definer RPC derives the owner from `auth.uid()` and creates that
+user's active owner membership; it does not accept a caller-supplied owner ID or
+grant platform-admin access. Liquor-store profiles are normalized to medium,
+shared inventory, and one counter. The platform admin list includes every row
+in `shops`, including owner-created businesses, on its next successful refresh.
+`counter_count` in account memberships is derived from active `service_counters`
+rows, so the account profile stays aligned with the actual configured stations.
+The older `create_shop(_name)` RPC remains available for compatibility and
+creates the default profile.
 
 ## 3. Data model
 
@@ -307,12 +325,15 @@ credentials. Superadmin redemption returns the normal session tokens instead.
 After signing in, call `my_account` and select the approved business.
 
 Forward migration files `0021_admin_create_business_profile.sql`,
-`0022_atomic_qr_claim.sql`, and `0023_owner_waiter_roles.sql` are present in this
-checkout. Their presence in Git does not prove they reached the live database.
-Before enabling business creation, audit the live ledger/schema for `0016` and
-`0021`; before deploying the current poll function, confirm `0022`; before
-relying on the role restrictions, confirm `0023`. Do not blindly replay
-historical migrations to resolve drift.
+`0022_atomic_qr_claim.sql`, `0023_owner_waiter_roles.sql`, and
+`0041_owner_self_service_business_profile.sql` are present in this checkout.
+Their presence in Git does not prove they reached the live database. Before
+enabling admin-created business profiles, audit the live ledger/schema for
+`0016` and `0021`; before enabling owner self-service profile creation, confirm
+`0041` and its `0003`, `0006`, `0009`, `0015`, and `0016` prerequisites; before
+deploying the current poll function, confirm `0022`; before relying on role
+restrictions, confirm `0023`. Do not blindly replay historical migrations to
+resolve drift.
 
 ## 7. Typical mobile flows
 
@@ -321,7 +342,14 @@ historical migrations to resolve drift.
 ```ts
 const { data: account } = await supabase.rpc('my_account');
 if (!account.memberships.length && !account.is_platform_admin) {
-  await supabase.rpc('create_shop', { _name: 'My Counter' });
+  await supabase.rpc('create_owner_business_profile', {
+    _name: 'My Counter',
+    _business_type: 'big_club',
+    _business_size: 'medium',
+    _counter_inventory_mode: 'shared',
+    _counter_count: 1,
+  });
+  // Reload my_account() to obtain the new owner membership before loading POS data.
 }
 ```
 

@@ -295,6 +295,13 @@
       "when": 1793884631335,
       "tag": "0040_counter_sale_payment_method",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1794092802520,
+      "tag": "0041_owner_self_service_business_profile",
+      "breakpoints": true
     }
   ]
 }
