@@ -302,6 +302,13 @@
       "when": 1794092802520,
       "tag": "0041_owner_self_service_business_profile",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1794092802521,
+      "tag": "0042_stock_dispensation",
+      "breakpoints": true
     }
   ]
 }
