@@ -206,20 +206,178 @@ export type Database = {
         }
         Relationships: []
       }
+      client_operations: {
+        Row: {
+          actor_user_id: string
+          completed_at: string | null
+          created_at: string
+          kind: string
+          operation_id: string
+          request_payload: Json
+          result: Json | null
+          shop_id: string
+        }
+        Insert: {
+          actor_user_id: string
+          completed_at?: string | null
+          created_at?: string
+          kind: string
+          operation_id: string
+          request_payload: Json
+          result?: Json | null
+          shop_id: string
+        }
+        Update: {
+          actor_user_id?: string
+          completed_at?: string | null
+          created_at?: string
+          kind?: string
+          operation_id?: string
+          request_payload?: Json
+          result?: Json | null
+          shop_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_operations_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      counter_stock_balances: {
+        Row: {
+          product_id: string
+          quantity: number
+          service_counter_id: string
+          shop_id: string
+          updated_at: string
+        }
+        Insert: {
+          product_id: string
+          quantity?: number
+          service_counter_id: string
+          shop_id: string
+          updated_at?: string
+        }
+        Update: {
+          product_id?: string
+          quantity?: number
+          service_counter_id?: string
+          shop_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "counter_stock_balances_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "counter_stock_balances_service_counter_id_fkey"
+            columns: ["service_counter_id"]
+            isOneToOne: false
+            referencedRelation: "service_counters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "counter_stock_balances_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      counter_stock_movements: {
+        Row: {
+          actor_user_id: string | null
+          created_at: string
+          id: string
+          movement_type: string
+          note: string | null
+          product_id: string
+          quantity_delta: number
+          related_counter_id: string | null
+          service_counter_id: string
+          shop_id: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          created_at?: string
+          id?: string
+          movement_type: string
+          note?: string | null
+          product_id: string
+          quantity_delta: number
+          related_counter_id?: string | null
+          service_counter_id: string
+          shop_id: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          created_at?: string
+          id?: string
+          movement_type?: string
+          note?: string | null
+          product_id?: string
+          quantity_delta?: number
+          related_counter_id?: string | null
+          service_counter_id?: string
+          shop_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "counter_stock_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "counter_stock_movements_related_counter_id_fkey"
+            columns: ["related_counter_id"]
+            isOneToOne: false
+            referencedRelation: "service_counters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "counter_stock_movements_service_counter_id_fkey"
+            columns: ["service_counter_id"]
+            isOneToOne: false
+            referencedRelation: "service_counters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "counter_stock_movements_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dining_tables: {
         Row: {
+          archived: boolean
           created_at: string
           id: string
           name: string
           shop_id: string
         }
         Insert: {
+          archived?: boolean
           created_at?: string
           id?: string
           name: string
           shop_id: string
         }
         Update: {
+          archived?: boolean
           created_at?: string
           id?: string
           name?: string
@@ -228,47 +386,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "dining_tables_shop_id_fkey"
-            columns: ["shop_id"]
-            isOneToOne: false
-            referencedRelation: "shops"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      employee_working_hours: {
-        Row: {
-          enabled: boolean
-          end_time: string
-          shop_id: string
-          start_time: string
-          updated_at: string
-          updated_by: string | null
-          user_id: string
-          weekday: number
-        }
-        Insert: {
-          enabled?: boolean
-          end_time: string
-          shop_id: string
-          start_time: string
-          updated_at?: string
-          updated_by?: string | null
-          user_id: string
-          weekday: number
-        }
-        Update: {
-          enabled?: boolean
-          end_time?: string
-          shop_id?: string
-          start_time?: string
-          updated_at?: string
-          updated_by?: string | null
-          user_id?: string
-          weekday?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "employee_working_hours_shop_id_fkey"
             columns: ["shop_id"]
             isOneToOne: false
             referencedRelation: "shops"
@@ -319,6 +436,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "employee_recovery_passes_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_working_hours: {
+        Row: {
+          enabled: boolean
+          end_time: string
+          shop_id: string
+          start_time: string
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+          weekday: number
+        }
+        Insert: {
+          enabled?: boolean
+          end_time: string
+          shop_id: string
+          start_time: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+          weekday: number
+        }
+        Update: {
+          enabled?: boolean
+          end_time?: string
+          shop_id?: string
+          start_time?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_working_hours_shop_id_fkey"
             columns: ["shop_id"]
             isOneToOne: false
             referencedRelation: "shops"
@@ -511,12 +669,14 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          payment_method: string
           product_id: string
           product_name: string
           profit_total: number
           qty: number
           shop_id: string
           sold_by: string
+          source_counter_id: string | null
           stock_qty: number
           total: number
           undone_at: string | null
@@ -528,12 +688,14 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          payment_method?: string
           product_id: string
           product_name: string
           profit_total?: number
           qty: number
           shop_id: string
           sold_by: string
+          source_counter_id?: string | null
           stock_qty?: number
           total: number
           undone_at?: string | null
@@ -545,12 +707,14 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          payment_method?: string
           product_id?: string
           product_name?: string
           profit_total?: number
           qty?: number
           shop_id?: string
           sold_by?: string
+          source_counter_id?: string | null
           stock_qty?: number
           total?: number
           undone_at?: string | null
@@ -572,6 +736,13 @@ export type Database = {
             columns: ["shop_id"]
             isOneToOne: false
             referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_source_counter_id_fkey"
+            columns: ["source_counter_id"]
+            isOneToOne: false
+            referencedRelation: "service_counters"
             referencedColumns: ["id"]
           },
         ]
@@ -604,6 +775,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "service_counters_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shop_business_hours: {
+        Row: {
+          close_time: string
+          enabled: boolean
+          open_time: string
+          shop_id: string
+          updated_at: string
+          updated_by: string | null
+          weekday: number
+        }
+        Insert: {
+          close_time: string
+          enabled?: boolean
+          open_time: string
+          shop_id: string
+          updated_at?: string
+          updated_by?: string | null
+          weekday: number
+        }
+        Update: {
+          close_time?: string
+          enabled?: boolean
+          open_time?: string
+          shop_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_business_hours_shop_id_fkey"
             columns: ["shop_id"]
             isOneToOne: false
             referencedRelation: "shops"
@@ -657,6 +866,7 @@ export type Database = {
       }
       shops: {
         Row: {
+          business_hours_enabled: boolean
           business_size: string
           business_type: string
           closed_at: string | null
@@ -679,6 +889,7 @@ export type Database = {
           timezone: string
         }
         Insert: {
+          business_hours_enabled?: boolean
           business_size?: string
           business_type?: string
           closed_at?: string | null
@@ -701,6 +912,7 @@ export type Database = {
           timezone?: string
         }
         Update: {
+          business_hours_enabled?: boolean
           business_size?: string
           business_type?: string
           closed_at?: string | null
@@ -845,6 +1057,54 @@ export type Database = {
           },
         ]
       }
+      table_bill_settlements: {
+        Row: {
+          amount: number
+          client_operation_id: string
+          id: string
+          payment_method: string
+          settled_at: string
+          settled_by: string
+          shop_id: string
+          table_id: string
+        }
+        Insert: {
+          amount: number
+          client_operation_id: string
+          id?: string
+          payment_method: string
+          settled_at?: string
+          settled_by: string
+          shop_id: string
+          table_id: string
+        }
+        Update: {
+          amount?: number
+          client_operation_id?: string
+          id?: string
+          payment_method?: string
+          settled_at?: string
+          settled_by?: string
+          shop_id?: string
+          table_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "table_bill_settlements_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "table_bill_settlements_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "dining_tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       table_orders: {
         Row: {
           id: string
@@ -853,6 +1113,7 @@ export type Database = {
           qty: number
           sale_id: string
           served_at: string
+          settlement_id: string | null
           shop_id: string
           table_id: string
           total: number
@@ -866,6 +1127,7 @@ export type Database = {
           qty: number
           sale_id: string
           served_at?: string
+          settlement_id?: string | null
           shop_id: string
           table_id: string
           total: number
@@ -879,6 +1141,7 @@ export type Database = {
           qty?: number
           sale_id?: string
           served_at?: string
+          settlement_id?: string | null
           shop_id?: string
           table_id?: string
           total?: number
@@ -898,6 +1161,13 @@ export type Database = {
             columns: ["sale_id"]
             isOneToOne: true
             referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "table_orders_settlement_id_fkey"
+            columns: ["settlement_id"]
+            isOneToOne: false
+            referencedRelation: "table_bill_settlements"
             referencedColumns: ["id"]
           },
           {
@@ -959,46 +1229,87 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      add_from_catalog_at_counter: {
-        Args: {
-          _catalog: string
-          _counter: string
-          _price: number
-          _qty: number
-          _shop: string
-          _unit_cost?: number
-        }
-        Returns: {
-          archived: boolean
-          average_cost: number
-          barcode: string | null
-          body_color: string | null
-          brand: string | null
-          catalog_item_id: string | null
-          category: string | null
-          code: string
-          counter_id: string | null
-          created_at: string
-          id: string
-          label_color: string | null
-          label_text_color: string | null
-          name: string
-          photo_path: string | null
-          photo_url: string | null
-          price: number
-          product_type: Database["public"]["Enums"]["product_type"]
-          shop_id: string
-          size: string | null
-          stock: number
-          updated_at: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "products"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
+      add_from_catalog_at_counter:
+        | {
+            Args: {
+              _catalog: string
+              _counter: string
+              _price: number
+              _qty: number
+              _shop: string
+              _unit_cost?: number
+            }
+            Returns: {
+              archived: boolean
+              average_cost: number
+              barcode: string | null
+              body_color: string | null
+              brand: string | null
+              catalog_item_id: string | null
+              category: string | null
+              code: string
+              counter_id: string | null
+              created_at: string
+              id: string
+              label_color: string | null
+              label_text_color: string | null
+              name: string
+              photo_path: string | null
+              photo_url: string | null
+              price: number
+              product_type: Database["public"]["Enums"]["product_type"]
+              shop_id: string
+              size: string | null
+              stock: number
+              updated_at: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "products"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              _catalog: string
+              _counter: string
+              _price: number
+              _qty: number
+              _shop: string
+              _unit_cost?: number
+            }
+            Returns: {
+              archived: boolean
+              average_cost: number
+              barcode: string | null
+              body_color: string | null
+              brand: string | null
+              catalog_item_id: string | null
+              category: string | null
+              code: string
+              counter_id: string | null
+              created_at: string
+              id: string
+              label_color: string | null
+              label_text_color: string | null
+              name: string
+              photo_path: string | null
+              photo_url: string | null
+              price: number
+              product_type: Database["public"]["Enums"]["product_type"]
+              shop_id: string
+              size: string | null
+              stock: number
+              updated_at: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "products"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       add_from_catalog_with_cost: {
         Args: {
           _catalog: string
@@ -1046,6 +1357,44 @@ export type Database = {
         }
         Returns: undefined
       }
+      adjust_counter_stock: {
+        Args: {
+          _counter: string
+          _new_stock: number
+          _product: string
+          _reason?: string
+        }
+        Returns: {
+          archived: boolean
+          average_cost: number
+          barcode: string | null
+          body_color: string | null
+          brand: string | null
+          catalog_item_id: string | null
+          category: string | null
+          code: string
+          counter_id: string | null
+          created_at: string
+          id: string
+          label_color: string | null
+          label_text_color: string | null
+          name: string
+          photo_path: string | null
+          photo_url: string | null
+          price: number
+          product_type: Database["public"]["Enums"]["product_type"]
+          shop_id: string
+          size: string | null
+          stock: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "products"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       adjust_stock: {
         Args: { _new_stock: number; _product: string; _reason?: string }
         Returns: {
@@ -1087,6 +1436,7 @@ export type Database = {
           _owner_email?: string
         }
         Returns: {
+          business_hours_enabled: boolean
           business_size: string
           business_type: string
           closed_at: string | null
@@ -1125,6 +1475,44 @@ export type Database = {
           _owner_email?: string
         }
         Returns: {
+          business_hours_enabled: boolean
+          business_size: string
+          business_type: string
+          closed_at: string | null
+          closed_by: string | null
+          closure_reason: string | null
+          counter_count: number
+          counter_inventory_mode: string
+          created_at: string
+          created_by: string
+          currency: string
+          feature_flags: Json
+          id: string
+          low_stock_threshold: number
+          name: string
+          owner_email: string | null
+          status: string
+          suspended_at: string | null
+          suspended_by: string | null
+          suspension_reason: string | null
+          timezone: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "shops"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      admin_create_business_with_counter_setup: {
+        Args: {
+          _counter_count?: number
+          _counter_inventory_mode?: string
+          _name: string
+          _owner_email?: string
+        }
+        Returns: {
+          business_hours_enabled: boolean
           business_size: string
           business_type: string
           closed_at: string | null
@@ -1159,6 +1547,8 @@ export type Database = {
           business_size: string
           business_type: string
           closed_at: string
+          counter_count: number
+          counter_inventory_mode: string
           created_at: string
           feature_flags: Json
           lifecycle_reason: string
@@ -1175,7 +1565,7 @@ export type Database = {
       admin_list_shop_members: {
         Args: { _shop: string }
         Returns: {
-          display_name: string | null
+          display_name: string
           email: string
           employment_status: string
           member_user_id: string
@@ -1184,13 +1574,10 @@ export type Database = {
           status_reason: string
         }[]
       }
-      set_employee_display_name: {
-        Args: { _display_name: string; _shop: string; _user: string }
-        Returns: undefined
-      }
       admin_set_business_status: {
         Args: { _reason?: string; _shop: string; _status: string }
         Returns: {
+          business_hours_enabled: boolean
           business_size: string
           business_type: string
           closed_at: string | null
@@ -1219,14 +1606,54 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      apply_pos_operation: {
+        Args: {
+          _kind: string
+          _operation_id: string
+          _payload: Json
+          _shop: string
+        }
+        Returns: Json
+      }
+      apply_pos_operation_legacy: {
+        Args: {
+          _kind: string
+          _operation_id: string
+          _payload: Json
+          _shop: string
+        }
+        Returns: Json
+      }
       can_sell_for_shop: { Args: { _shop: string }; Returns: boolean }
       clear_employee_schedule: {
         Args: { _shop: string; _user: string }
         Returns: undefined
       }
+      complete_employee_recovery_pass: {
+        Args: { _claim_token: string; _pass_hash: string }
+        Returns: undefined
+      }
+      counter_sales_report: {
+        Args: { _from?: string; _shop: string; _to?: string }
+        Returns: {
+          counter_id: string
+          counter_name: string
+          revenue: number
+          sale_count: number
+          units: number
+        }[]
+      }
+      counter_stock_report: {
+        Args: { _counter: string; _shop: string }
+        Returns: {
+          product_id: string
+          quantity: number
+        }[]
+      }
       create_dining_table: {
         Args: { _name: string; _shop: string }
         Returns: {
+          archived: boolean
           created_at: string
           id: string
           name: string
@@ -1239,9 +1666,65 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_owner_business_profile: {
+        Args: {
+          _business_size?: string
+          _business_type?: string
+          _counter_count?: number
+          _counter_inventory_mode?: string
+          _name: string
+        }
+        Returns: {
+          business_hours_enabled: boolean
+          business_size: string
+          business_type: string
+          closed_at: string | null
+          closed_by: string | null
+          closure_reason: string | null
+          counter_count: number
+          counter_inventory_mode: string
+          created_at: string
+          created_by: string
+          currency: string
+          feature_flags: Json
+          id: string
+          low_stock_threshold: number
+          name: string
+          owner_email: string | null
+          status: string
+          suspended_at: string | null
+          suspended_by: string | null
+          suspension_reason: string | null
+          timezone: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "shops"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_service_counter: {
+        Args: { _name: string; _shop: string }
+        Returns: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          shop_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "service_counters"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_shop: {
         Args: { _name: string }
         Returns: {
+          business_hours_enabled: boolean
           business_size: string
           business_type: string
           closed_at: string | null
@@ -1271,6 +1754,10 @@ export type Database = {
         }
       }
       daily_summary: { Args: { _day?: string; _shop: string }; Returns: Json }
+      delete_dining_table: {
+        Args: { _shop: string; _table: string }
+        Returns: undefined
+      }
       find_product: {
         Args: { _query: string; _shop: string }
         Returns: {
@@ -1304,6 +1791,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_business_hours: { Args: { _shop: string }; Returns: Json }
       has_shop_role: {
         Args: {
           _roles: Database["public"]["Enums"]["shop_role"][]
@@ -1317,9 +1805,59 @@ export type Database = {
       is_shop_manager: { Args: { _shop: string }; Returns: boolean }
       is_shop_member: { Args: { _shop: string }; Returns: boolean }
       is_shop_owner: { Args: { _shop: string }; Returns: boolean }
+      issue_employee_recovery_pass: {
+        Args: {
+          _actor: string
+          _pass_hash: string
+          _shop: string
+          _user: string
+        }
+        Returns: string
+      }
       my_account: { Args: never; Returns: Json }
       receive_stock: {
         Args: { _product: string; _qty: number }
+        Returns: {
+          archived: boolean
+          average_cost: number
+          barcode: string | null
+          body_color: string | null
+          brand: string | null
+          catalog_item_id: string | null
+          category: string | null
+          code: string
+          counter_id: string | null
+          created_at: string
+          id: string
+          label_color: string | null
+          label_text_color: string | null
+          name: string
+          photo_path: string | null
+          photo_url: string | null
+          price: number
+          product_type: Database["public"]["Enums"]["product_type"]
+          shop_id: string
+          size: string | null
+          stock: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "products"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      receive_stock_at_counter: {
+        Args: {
+          _counter: string
+          _notes?: string
+          _product: string
+          _qty: number
+          _reference?: string
+          _supplier?: string
+          _unit_cost?: number
+        }
         Returns: {
           archived: boolean
           average_cost: number
@@ -1396,12 +1934,14 @@ export type Database = {
         Returns: {
           created_at: string
           id: string
+          payment_method: string
           product_id: string
           product_name: string
           profit_total: number
           qty: number
           shop_id: string
           sold_by: string
+          source_counter_id: string | null
           stock_qty: number
           total: number
           undone_at: string | null
@@ -1427,12 +1967,14 @@ export type Database = {
         Returns: {
           created_at: string
           id: string
+          payment_method: string
           product_id: string
           product_name: string
           profit_total: number
           qty: number
           shop_id: string
           sold_by: string
+          source_counter_id: string | null
           stock_qty: number
           total: number
           undone_at: string | null
@@ -1448,6 +1990,76 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      record_sale_unit_from_counter:
+        | {
+            Args: {
+              _counter: string
+              _product: string
+              _qty?: number
+              _unit_name?: string
+              _unit_price?: number
+            }
+            Returns: {
+              created_at: string
+              id: string
+              payment_method: string
+              product_id: string
+              product_name: string
+              profit_total: number
+              qty: number
+              shop_id: string
+              sold_by: string
+              source_counter_id: string | null
+              stock_qty: number
+              total: number
+              undone_at: string | null
+              undone_by: string | null
+              unit_cost_total: number
+              unit_name: string
+              unit_price: number
+            }
+            SetofOptions: {
+              from: "*"
+              to: "sales"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              _counter: string
+              _payment_method: string
+              _product: string
+              _qty: number
+              _unit_name: string
+              _unit_price: number
+            }
+            Returns: {
+              created_at: string
+              id: string
+              payment_method: string
+              product_id: string
+              product_name: string
+              profit_total: number
+              qty: number
+              shop_id: string
+              sold_by: string
+              source_counter_id: string | null
+              stock_qty: number
+              total: number
+              undone_at: string | null
+              undone_by: string | null
+              unit_cost_total: number
+              unit_name: string
+              unit_price: number
+            }
+            SetofOptions: {
+              from: "*"
+              to: "sales"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       record_table_sale: {
         Args: {
           _product: string
@@ -1464,6 +2076,7 @@ export type Database = {
           qty: number
           sale_id: string
           served_at: string
+          settlement_id: string | null
           shop_id: string
           table_id: string
           total: number
@@ -1477,8 +2090,76 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      record_table_sale_from_counter:
+        | {
+            Args: {
+              _counter: string
+              _product: string
+              _qty: number
+              _shop: string
+              _table: string
+              _unit_name: string
+              _unit_price: number
+            }
+            Returns: {
+              id: string
+              product_id: string
+              product_name: string
+              qty: number
+              sale_id: string
+              served_at: string
+              settlement_id: string | null
+              shop_id: string
+              table_id: string
+              total: number
+              unit_name: string
+              unit_price: number
+            }
+            SetofOptions: {
+              from: "*"
+              to: "table_orders"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              _counter: string
+              _payment_method: string
+              _product: string
+              _qty: number
+              _shop: string
+              _table: string
+              _unit_name: string
+              _unit_price: number
+            }
+            Returns: {
+              id: string
+              product_id: string
+              product_name: string
+              qty: number
+              sale_id: string
+              served_at: string
+              settlement_id: string | null
+              shop_id: string
+              table_id: string
+              total: number
+              unit_name: string
+              unit_price: number
+            }
+            SetofOptions: {
+              from: "*"
+              to: "table_orders"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       redeem_access_pass_atomic: {
         Args: { _pass_hash: string; _user: string }
+        Returns: Json
+      }
+      redeem_employee_recovery_pass_atomic: {
+        Args: { _pass_hash: string }
         Returns: Json
       }
       register_product: {
@@ -1493,6 +2174,52 @@ export type Database = {
           _shop: string
           _size?: string
           _type?: Database["public"]["Enums"]["product_type"]
+        }
+        Returns: {
+          archived: boolean
+          average_cost: number
+          barcode: string | null
+          body_color: string | null
+          brand: string | null
+          catalog_item_id: string | null
+          category: string | null
+          code: string
+          counter_id: string | null
+          created_at: string
+          id: string
+          label_color: string | null
+          label_text_color: string | null
+          name: string
+          photo_path: string | null
+          photo_url: string | null
+          price: number
+          product_type: Database["public"]["Enums"]["product_type"]
+          shop_id: string
+          size: string | null
+          stock: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "products"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      register_product_at_counter: {
+        Args: {
+          _brand?: string
+          _category?: string
+          _code: string
+          _counter: string
+          _name: string
+          _photo_path: string
+          _price: number
+          _qty: number
+          _shop: string
+          _size?: string
+          _type?: Database["public"]["Enums"]["product_type"]
+          _unit_cost?: number
         }
         Returns: {
           archived: boolean
@@ -1574,6 +2301,31 @@ export type Database = {
         Args: { _reason?: string; _shop: string; _user: string }
         Returns: undefined
       }
+      rename_service_counter: {
+        Args: { _counter: string; _name: string; _shop: string }
+        Returns: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          shop_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "service_counters"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      set_business_hours: {
+        Args: { _days: Json; _enabled: boolean; _shop: string }
+        Returns: Json
+      }
+      set_employee_display_name: {
+        Args: { _display_name: string; _shop: string; _user: string }
+        Returns: undefined
+      }
       set_employee_role: {
         Args: {
           _role: Database["public"]["Enums"]["shop_role"]
@@ -1602,17 +2354,84 @@ export type Database = {
         }
         Returns: undefined
       }
+      set_service_counter_active: {
+        Args: { _active: boolean; _counter: string }
+        Returns: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          shop_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "service_counters"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      settle_table_bill: {
+        Args: {
+          _operation_id: string
+          _payment_method: string
+          _shop: string
+          _table: string
+        }
+        Returns: Json
+      }
+      transfer_counter_stock: {
+        Args: {
+          _from_counter: string
+          _product: string
+          _qty: number
+          _reason?: string
+          _shop: string
+          _to_counter: string
+        }
+        Returns: undefined
+      }
       undo_sale: {
         Args: { _sale?: string; _shop: string }
         Returns: {
           created_at: string
           id: string
+          payment_method: string
           product_id: string
           product_name: string
           profit_total: number
           qty: number
           shop_id: string
           sold_by: string
+          source_counter_id: string | null
+          stock_qty: number
+          total: number
+          undone_at: string | null
+          undone_by: string | null
+          unit_cost_total: number
+          unit_name: string
+          unit_price: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "sales"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      undo_sale_from_counter: {
+        Args: { _shop: string }
+        Returns: {
+          created_at: string
+          id: string
+          payment_method: string
+          product_id: string
+          product_name: string
+          profit_total: number
+          qty: number
+          shop_id: string
+          sold_by: string
+          source_counter_id: string | null
           stock_qty: number
           total: number
           undone_at: string | null
