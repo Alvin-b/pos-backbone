@@ -20,9 +20,8 @@ Deno.serve(async (req) => {
     db.from("shop_members").select("role,employment_status").eq("shop_id", shopId).eq("user_id", user.id).eq("employment_status", "active").maybeSingle(),
   ]);
   const isPlatformAdmin = Boolean(platform);
-  if (isPlatformAdmin) {
-    if (role !== "owner") return json({ error: "superadmin_owner_pass_only" }, 403);
-  } else {
+  // The platform admin explicitly selects a supported role when onboarding a tenant user.
+  if (!isPlatformAdmin) {
     if (!membership || membership.role !== "owner" || membership.employment_status !== "active") {
       return json({ error: "forbidden" }, 403);
     }

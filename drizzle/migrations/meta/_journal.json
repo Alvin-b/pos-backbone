@@ -309,6 +309,13 @@
       "when": 1794092802521,
       "tag": "0042_stock_dispensation",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1794185065040,
+      "tag": "0043_business_profile_counter_limits",
+      "breakpoints": true
     }
   ]
 }

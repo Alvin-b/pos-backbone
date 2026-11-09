@@ -30,9 +30,7 @@ Deno.serve(async (req) => {
       .eq("user_id", user.id)
       .maybeSingle(),
   ]);
-  if (platform) {
-    if (role !== "owner") return json({ error: "superadmin_owner_enrollment_only" }, 403);
-  } else {
+  if (!platform) {
     if (!membership || membership.role !== "owner" || membership.employment_status !== "active") {
       return json({ error: "forbidden" }, 403);
     }
