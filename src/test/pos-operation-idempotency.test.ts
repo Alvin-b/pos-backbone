@@ -5,6 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 const migrationPath = 'drizzle/migrations/0026_client_operation_idempotency.sql';
 const migration = readFileSync(migrationPath, 'utf8');
+const bulkUnitsMigration = readFileSync('drizzle/migrations/0044_bulk_product_sale_units.sql', 'utf8');
 const journal = JSON.parse(readFileSync('drizzle/migrations/meta/_journal.json', 'utf8'));
 const kinds = [
   'create_dining_table', 'sale', 'table_sale', 'receive_stock', 'add_catalog_product',
@@ -25,14 +26,33 @@ describe('POS operation migration contract', () => {
     expect(migration).not.toMatch(/DROP (?:FUNCTION|TABLE)/);
     for (const kind of kinds) expect(migration).toContain(`WHEN '${kind}' THEN`);
   });
-  it('keeps the POS idempotency and bill-settlement migrations ordered', () => {
+  it('keeps POS idempotency, bill settlement, and bulk sale-unit migrations ordered', () => {
     const operationMigration = journal.entries.find((entry: { tag: string }) =>
       entry.tag === '0026_client_operation_idempotency');
+    const billMigration = journal.entries.find((entry: { tag: string }) =>
+      entry.tag === '0027_table_bill_settlement');
+    const bulkMigration = journal.entries.find((entry: { tag: string }) =>
+      entry.tag === '0044_bulk_product_sale_units');
     const last = journal.entries.at(-1);
     expect(operationMigration).toBeDefined();
-    expect(last.tag).toBe('0030_employee_profiles_and_recovery');
-    expect(last.idx).toBe(journal.entries.at(-2).idx + 1);
-    expect(last.when).toBeGreaterThan(journal.entries.at(-2).when);
+    expect(billMigration).toBeDefined();
+    expect(bulkMigration).toBeDefined();
+    expect(operationMigration.idx).toBeLessThan(billMigration.idx);
+    expect(billMigration.idx).toBeLessThan(bulkMigration.idx);
+    expect(bulkMigration.tag).toBe(last.tag);
+    expect(bulkMigration.idx).toBe(journal.entries.at(-2).idx + 1);
+    expect(bulkMigration.when).toBeGreaterThan(journal.entries.at(-2).when);
+  });
+  it('adds cross-device units and permits manual-depletion bulk sales in the backend contract', () => {
+    expect(bulkUnitsMigration).toContain('ADD COLUMN IF NOT EXISTS sale_units jsonb');
+    expect(bulkUnitsMigration).toContain('CREATE OR REPLACE FUNCTION public.register_product_with_units');
+    expect(bulkUnitsMigration).toContain('CREATE OR REPLACE FUNCTION public.register_product_at_counter_with_units');
+    expect(bulkUnitsMigration).toContain('stock_used := _qty * units_per_sale');
+    expect(bulkUnitsMigration).toContain('IF NEW.stock_qty <> 0 THEN');
+    expect(bulkUnitsMigration).toContain('sale_units = product.sale_units');
+    expect(bulkUnitsMigration).toContain('ELSIF s.stock_qty > 0 THEN');
+    expect(bulkUnitsMigration).toContain('CREATE OR REPLACE FUNCTION public.apply_pos_operation_legacy');
+    expect(bulkUnitsMigration).not.toMatch(/CREATE OR REPLACE FUNCTION public\.apply_pos_operation\(/);
   });
 });
 
@@ -54,7 +74,7 @@ describe.skipIf(!localUrl)('POS operation PostgreSQL integration (local only)', 
   let admin: ReturnType<typeof postgres>;
   let db: ReturnType<typeof postgres>;
   let databaseName: string;
-  let oldFunctions: unknown;
+  let functionsBeforeBulkMigration: Array<{ signature: string; definition: string }> = [];
   const owner = randomUUID();
   const otherOwner = randomUUID();
   const cashier = randomUUID();
@@ -94,7 +114,10 @@ describe.skipIf(!localUrl)('POS operation PostgreSQL integration (local only)', 
       case 'adjust_stock': return { product_id: product, counter_id: counter, new_stock: 12, reason: 'Count' };
       case 'undo_sale': return { sale_id: targetSale };
       case 'transfer_stock': return { product_id: product, from_counter_id: counter, to_counter_id: destination, qty: 3 };
-      case 'update_product': return { product_id: product, patch: { name: 'Renamed', price: 250, barcode: '1234567890123' } };
+      case 'update_product': return { product_id: product, patch: {
+        name: 'Renamed', price: 250, barcode: '1234567890123',
+        sale_units: [{ name: 'Shot', priceKsh: 120, stockUnitsPerSale: 0 }],
+      } };
     }
   }
 
@@ -139,7 +162,9 @@ describe.skipIf(!localUrl)('POS operation PostgreSQL integration (local only)', 
       $$;
       GRANT USAGE ON SCHEMA public, auth, storage TO anon, authenticated, service_role;`);
     for (const entry of journal.entries) {
-      if (entry.tag.startsWith('0024_')) oldFunctions = await functions();
+      if (entry.tag === '0044_bulk_product_sale_units') {
+        functionsBeforeBulkMigration = await functions() as Array<{ signature: string; definition: string }>;
+      }
       await db.unsafe(readFileSync(`drizzle/migrations/${entry.tag}.sql`, 'utf8'));
     }
     await db`INSERT INTO auth.users(id, email) VALUES
@@ -181,8 +206,11 @@ describe.skipIf(!localUrl)('POS operation PostgreSQL integration (local only)', 
     targetSale = ''; latestSale = '';
   });
 
-  it('does not alter any existing SQL function definition or return type', async () => {
-    expect(await functions()).toEqual(oldFunctions);
+  it('leaves unrelated existing SQL functions unchanged in the bulk-unit migration', async () => {
+    const changed = /public\.(validate_product_sale_units|record_sale_unit|undo_sale|enforce_counter_stock_on_sale|apply_pos_operation_legacy|register_product_with_units|register_product_at_counter_with_units)\(/;
+    const before = functionsBeforeBulkMigration.filter(row => !changed.test(row.signature));
+    const after = (await functions() as Array<{ signature: string; definition: string }>).filter(row => !changed.test(row.signature));
+    expect(after).toEqual(before);
   });
 
   it.each(kinds)('executes %s exactly once and replays the frozen result', async kind => {
@@ -212,6 +240,50 @@ describe.skipIf(!localUrl)('POS operation PostgreSQL integration (local only)', 
     const expectedStock: Partial<Record<Kind, number>> = { sale: 18, table_sale: 18, receive_stock: 23, adjust_stock: 17, undo_sale: 19, transfer_stock: 20, update_product: 20 };
     if (kind in expectedStock) expect(p.stock).toBe(expectedStock[kind]);
     if (kind === 'update_product') expect(p.average_cost).toBe(100);
+  });
+
+  it('registers and sells a zero-opening bulk product without moving or restoring phantom stock', async () => {
+    const saleUnits = [
+      { name: 'Cup', priceKsh: 100, stockUnitsPerSale: 0 },
+      { name: 'Jug', priceKsh: 450, stockUnitsPerSale: 0 },
+    ];
+    const registered = await call('register_product', {
+      code: 'BULK_ZERO', name: 'Local Liquor', price: 100, qty: 0,
+      counter_id: counter, photo_path: null, unit_cost: 4500, category: 'Local Liquor',
+      sale_units: saleUnits,
+    });
+    const bulkProductId = registered.id as string;
+    expect(registered.stock).toBe(0);
+    expect(registered.average_cost).toBe(4500);
+    expect(registered.sale_units).toEqual(saleUnits);
+
+    const firstSale = await call('sale', {
+      product_id: bulkProductId, counter_id: counter, qty: 2,
+      unit_name: 'Cup', unit_price: 100,
+    });
+    expect(firstSale.stock_qty).toBe(0);
+
+    const [balanceAfterSale] = await db`SELECT quantity FROM public.counter_stock_balances
+      WHERE service_counter_id = ${counter} AND product_id = ${bulkProductId}`;
+    expect(balanceAfterSale.quantity).toBe(0);
+
+    const undone = await call('undo_sale', { sale_id: firstSale.id });
+    expect(undone.stock_qty).toBe(0);
+    const [productAfterUndo] = await db`SELECT stock, average_cost FROM public.products WHERE id = ${bulkProductId}`;
+    expect(productAfterUndo.stock).toBe(0);
+    expect(productAfterUndo.average_cost).toBe(4500);
+    const [batchCount] = await db`SELECT count(*)::int AS count FROM public.stock_batches WHERE product_id = ${bulkProductId}`;
+    expect(batchCount.count).toBe(0);
+
+    const tableSale = await call('table_sale', {
+      table_id: table, product_id: bulkProductId, counter_id: counter,
+      qty: 1, unit_name: 'Jug', unit_price: 450,
+    });
+    const [tableSaleRow] = await db`SELECT stock_qty FROM public.sales WHERE id = ${tableSale.sale_id}`;
+    expect(tableSaleRow.stock_qty).toBe(0);
+    const [movementCount] = await db`SELECT count(*)::int AS count FROM public.counter_stock_movements
+      WHERE product_id = ${bulkProductId}`;
+    expect(movementCount.count).toBe(0);
   });
 
   it('canonicalizes object order, UUID casing and omitted defaults', async () => {

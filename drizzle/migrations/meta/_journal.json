@@ -316,6 +316,13 @@
       "when": 1794185065040,
       "tag": "0043_business_profile_counter_limits",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1794247578967,
+      "tag": "0044_bulk_product_sale_units",
+      "breakpoints": true
     }
   ]
 }

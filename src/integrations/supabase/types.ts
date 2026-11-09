@@ -552,6 +552,7 @@ export type Database = {
           photo_url: string | null
           price: number
           product_type: Database["public"]["Enums"]["product_type"]
+          sale_units: Json
           shop_id: string
           size: string | null
           stock: number
@@ -576,6 +577,7 @@ export type Database = {
           photo_url?: string | null
           price: number
           product_type?: Database["public"]["Enums"]["product_type"]
+          sale_units?: Json
           shop_id: string
           size?: string | null
           stock?: number
@@ -600,6 +602,7 @@ export type Database = {
           photo_url?: string | null
           price?: number
           product_type?: Database["public"]["Enums"]["product_type"]
+          sale_units?: Json
           shop_id?: string
           size?: string | null
           stock?: number
