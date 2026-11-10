@@ -948,6 +948,11 @@ export type Database = {
           last_payment_phone: string | null
           last_payment_receipt: string | null
           low_stock_threshold: number
+          payment_lock_active: boolean
+          payment_lock_amount_ksh: number
+          payment_lock_reason: string | null
+          payment_lock_started_at: string | null
+          payment_lock_started_by: string | null
           name: string
           owner_email: string | null
           status: string
@@ -979,6 +984,11 @@ export type Database = {
           last_payment_phone?: string | null
           last_payment_receipt?: string | null
           low_stock_threshold?: number
+          payment_lock_active?: boolean
+          payment_lock_amount_ksh?: number
+          payment_lock_reason?: string | null
+          payment_lock_started_at?: string | null
+          payment_lock_started_by?: string | null
           name: string
           owner_email?: string | null
           status?: string
@@ -1010,6 +1020,11 @@ export type Database = {
           last_payment_phone?: string | null
           last_payment_receipt?: string | null
           low_stock_threshold?: number
+          payment_lock_active?: boolean
+          payment_lock_amount_ksh?: number
+          payment_lock_reason?: string | null
+          payment_lock_started_at?: string | null
+          payment_lock_started_by?: string | null
           name?: string
           owner_email?: string | null
           status?: string
