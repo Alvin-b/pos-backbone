@@ -484,6 +484,68 @@ export type Database = {
           },
         ]
       }
+      mpesa_subscription_payments: {
+        Row: {
+          amount_ksh: number
+          checkout_request_id: string | null
+          completed_at: string | null
+          created_at: string
+          id: string
+          initiated_by: string
+          merchant_request_id: string | null
+          mpesa_receipt: string | null
+          phone_number: string
+          plan_days: number
+          result_code: number | null
+          result_description: string | null
+          shop_id: string
+          status: string
+          transaction_at: string | null
+        }
+        Insert: {
+          amount_ksh: number
+          checkout_request_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          initiated_by: string
+          merchant_request_id?: string | null
+          mpesa_receipt?: string | null
+          phone_number: string
+          plan_days: number
+          result_code?: number | null
+          result_description?: string | null
+          shop_id: string
+          status?: string
+          transaction_at?: string | null
+        }
+        Update: {
+          amount_ksh?: number
+          checkout_request_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          initiated_by?: string
+          merchant_request_id?: string | null
+          mpesa_receipt?: string | null
+          phone_number?: string
+          plan_days?: number
+          result_code?: number | null
+          result_description?: string | null
+          shop_id?: string
+          status?: string
+          transaction_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mpesa_subscription_payments_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_admin_tokens: {
         Row: {
           auth_user_id: string
@@ -882,14 +944,22 @@ export type Database = {
           currency: string
           feature_flags: Json
           id: string
+          last_payment_at: string | null
+          last_payment_phone: string | null
+          last_payment_receipt: string | null
           low_stock_threshold: number
           name: string
           owner_email: string | null
           status: string
+          subscription_ends_at: string | null
+          subscription_plan_days: number
+          subscription_price_ksh: number
+          subscription_status: string
           suspended_at: string | null
           suspended_by: string | null
           suspension_reason: string | null
           timezone: string
+          trial_ends_at: string | null
         }
         Insert: {
           business_hours_enabled?: boolean
@@ -905,14 +975,22 @@ export type Database = {
           currency?: string
           feature_flags?: Json
           id?: string
+          last_payment_at?: string | null
+          last_payment_phone?: string | null
+          last_payment_receipt?: string | null
           low_stock_threshold?: number
           name: string
           owner_email?: string | null
           status?: string
+          subscription_ends_at?: string | null
+          subscription_plan_days?: number
+          subscription_price_ksh?: number
+          subscription_status?: string
           suspended_at?: string | null
           suspended_by?: string | null
           suspension_reason?: string | null
           timezone?: string
+          trial_ends_at?: string | null
         }
         Update: {
           business_hours_enabled?: boolean
@@ -928,14 +1006,22 @@ export type Database = {
           currency?: string
           feature_flags?: Json
           id?: string
+          last_payment_at?: string | null
+          last_payment_phone?: string | null
+          last_payment_receipt?: string | null
           low_stock_threshold?: number
           name?: string
           owner_email?: string | null
           status?: string
+          subscription_ends_at?: string | null
+          subscription_plan_days?: number
+          subscription_price_ksh?: number
+          subscription_status?: string
           suspended_at?: string | null
           suspended_by?: string | null
           suspension_reason?: string | null
           timezone?: string
+          trial_ends_at?: string | null
         }
         Relationships: []
       }
@@ -1220,6 +1306,7 @@ export type Database = {
           photo_url: string | null
           price: number
           product_type: Database["public"]["Enums"]["product_type"]
+          sale_units: Json
           shop_id: string
           size: string | null
           stock: number
@@ -1261,6 +1348,7 @@ export type Database = {
               photo_url: string | null
               price: number
               product_type: Database["public"]["Enums"]["product_type"]
+              sale_units: Json
               shop_id: string
               size: string | null
               stock: number
@@ -1301,6 +1389,7 @@ export type Database = {
               photo_url: string | null
               price: number
               product_type: Database["public"]["Enums"]["product_type"]
+              sale_units: Json
               shop_id: string
               size: string | null
               stock: number
@@ -1340,6 +1429,7 @@ export type Database = {
           photo_url: string | null
           price: number
           product_type: Database["public"]["Enums"]["product_type"]
+          sale_units: Json
           shop_id: string
           size: string | null
           stock: number
@@ -1386,6 +1476,7 @@ export type Database = {
           photo_url: string | null
           price: number
           product_type: Database["public"]["Enums"]["product_type"]
+          sale_units: Json
           shop_id: string
           size: string | null
           stock: number
@@ -1419,6 +1510,7 @@ export type Database = {
           photo_url: string | null
           price: number
           product_type: Database["public"]["Enums"]["product_type"]
+          sale_units: Json
           shop_id: string
           size: string | null
           stock: number
@@ -1452,14 +1544,22 @@ export type Database = {
           currency: string
           feature_flags: Json
           id: string
+          last_payment_at: string | null
+          last_payment_phone: string | null
+          last_payment_receipt: string | null
           low_stock_threshold: number
           name: string
           owner_email: string | null
           status: string
+          subscription_ends_at: string | null
+          subscription_plan_days: number
+          subscription_price_ksh: number
+          subscription_status: string
           suspended_at: string | null
           suspended_by: string | null
           suspension_reason: string | null
           timezone: string
+          trial_ends_at: string | null
         }
         SetofOptions: {
           from: "*"
@@ -1491,14 +1591,22 @@ export type Database = {
           currency: string
           feature_flags: Json
           id: string
+          last_payment_at: string | null
+          last_payment_phone: string | null
+          last_payment_receipt: string | null
           low_stock_threshold: number
           name: string
           owner_email: string | null
           status: string
+          subscription_ends_at: string | null
+          subscription_plan_days: number
+          subscription_price_ksh: number
+          subscription_status: string
           suspended_at: string | null
           suspended_by: string | null
           suspension_reason: string | null
           timezone: string
+          trial_ends_at: string | null
         }
         SetofOptions: {
           from: "*"
@@ -1528,14 +1636,22 @@ export type Database = {
           currency: string
           feature_flags: Json
           id: string
+          last_payment_at: string | null
+          last_payment_phone: string | null
+          last_payment_receipt: string | null
           low_stock_threshold: number
           name: string
           owner_email: string | null
           status: string
+          subscription_ends_at: string | null
+          subscription_plan_days: number
+          subscription_price_ksh: number
+          subscription_status: string
           suspended_at: string | null
           suspended_by: string | null
           suspension_reason: string | null
           timezone: string
+          trial_ends_at: string | null
         }
         SetofOptions: {
           from: "*"
@@ -1593,14 +1709,22 @@ export type Database = {
           currency: string
           feature_flags: Json
           id: string
+          last_payment_at: string | null
+          last_payment_phone: string | null
+          last_payment_receipt: string | null
           low_stock_threshold: number
           name: string
           owner_email: string | null
           status: string
+          subscription_ends_at: string | null
+          subscription_plan_days: number
+          subscription_price_ksh: number
+          subscription_status: string
           suspended_at: string | null
           suspended_by: string | null
           suspension_reason: string | null
           timezone: string
+          trial_ends_at: string | null
         }
         SetofOptions: {
           from: "*"
@@ -1691,14 +1815,22 @@ export type Database = {
           currency: string
           feature_flags: Json
           id: string
+          last_payment_at: string | null
+          last_payment_phone: string | null
+          last_payment_receipt: string | null
           low_stock_threshold: number
           name: string
           owner_email: string | null
           status: string
+          subscription_ends_at: string | null
+          subscription_plan_days: number
+          subscription_price_ksh: number
+          subscription_status: string
           suspended_at: string | null
           suspended_by: string | null
           suspension_reason: string | null
           timezone: string
+          trial_ends_at: string | null
         }
         SetofOptions: {
           from: "*"
@@ -1740,14 +1872,22 @@ export type Database = {
           currency: string
           feature_flags: Json
           id: string
+          last_payment_at: string | null
+          last_payment_phone: string | null
+          last_payment_receipt: string | null
           low_stock_threshold: number
           name: string
           owner_email: string | null
           status: string
+          subscription_ends_at: string | null
+          subscription_plan_days: number
+          subscription_price_ksh: number
+          subscription_status: string
           suspended_at: string | null
           suspended_by: string | null
           suspension_reason: string | null
           timezone: string
+          trial_ends_at: string | null
         }
         SetofOptions: {
           from: "*"
@@ -1760,6 +1900,16 @@ export type Database = {
       delete_dining_table: {
         Args: { _shop: string; _table: string }
         Returns: undefined
+      }
+      finalize_mpesa_subscription_payment: {
+        Args: {
+          p_amount_ksh: number
+          p_checkout_request_id: string
+          p_mpesa_receipt: string
+          p_phone_number: string
+          p_result_code: number
+        }
+        Returns: Json
       }
       find_product: {
         Args: { _query: string; _shop: string }
@@ -1782,6 +1932,7 @@ export type Database = {
           photo_url: string | null
           price: number
           product_type: Database["public"]["Enums"]["product_type"]
+          sale_units: Json
           shop_id: string
           size: string | null
           stock: number
@@ -1795,6 +1946,10 @@ export type Database = {
         }
       }
       get_business_hours: { Args: { _shop: string }; Returns: Json }
+      get_shop_subscription_status: {
+        Args: { p_shop_id: string }
+        Returns: Json
+      }
       has_shop_role: {
         Args: {
           _roles: Database["public"]["Enums"]["shop_role"][]
@@ -1839,6 +1994,7 @@ export type Database = {
           photo_url: string | null
           price: number
           product_type: Database["public"]["Enums"]["product_type"]
+          sale_units: Json
           shop_id: string
           size: string | null
           stock: number
@@ -1880,6 +2036,7 @@ export type Database = {
           photo_url: string | null
           price: number
           product_type: Database["public"]["Enums"]["product_type"]
+          sale_units: Json
           shop_id: string
           size: string | null
           stock: number
@@ -1920,6 +2077,7 @@ export type Database = {
           photo_url: string | null
           price: number
           product_type: Database["public"]["Enums"]["product_type"]
+          sale_units: Json
           shop_id: string
           size: string | null
           stock: number
@@ -2197,6 +2355,7 @@ export type Database = {
           photo_url: string | null
           price: number
           product_type: Database["public"]["Enums"]["product_type"]
+          sale_units: Json
           shop_id: string
           size: string | null
           stock: number
@@ -2243,6 +2402,55 @@ export type Database = {
           photo_url: string | null
           price: number
           product_type: Database["public"]["Enums"]["product_type"]
+          sale_units: Json
+          shop_id: string
+          size: string | null
+          stock: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "products"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      register_product_at_counter_with_units: {
+        Args: {
+          _brand?: string
+          _category?: string
+          _code: string
+          _counter: string
+          _name: string
+          _photo_path: string
+          _price: number
+          _qty: number
+          _sale_units?: Json
+          _shop: string
+          _size?: string
+          _type?: Database["public"]["Enums"]["product_type"]
+          _unit_cost?: number
+        }
+        Returns: {
+          archived: boolean
+          average_cost: number
+          barcode: string | null
+          body_color: string | null
+          brand: string | null
+          catalog_item_id: string | null
+          category: string | null
+          code: string
+          counter_id: string | null
+          created_at: string
+          id: string
+          label_color: string | null
+          label_text_color: string | null
+          name: string
+          photo_path: string | null
+          photo_url: string | null
+          price: number
+          product_type: Database["public"]["Enums"]["product_type"]
+          sale_units: Json
           shop_id: string
           size: string | null
           stock: number
@@ -2288,6 +2496,54 @@ export type Database = {
           photo_url: string | null
           price: number
           product_type: Database["public"]["Enums"]["product_type"]
+          sale_units: Json
+          shop_id: string
+          size: string | null
+          stock: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "products"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      register_product_with_units: {
+        Args: {
+          _brand?: string
+          _category?: string
+          _code: string
+          _name: string
+          _photo_path: string
+          _price: number
+          _qty: number
+          _sale_units?: Json
+          _shop: string
+          _size?: string
+          _type?: Database["public"]["Enums"]["product_type"]
+          _unit_cost?: number
+        }
+        Returns: {
+          archived: boolean
+          average_cost: number
+          barcode: string | null
+          body_color: string | null
+          brand: string | null
+          catalog_item_id: string | null
+          category: string | null
+          code: string
+          counter_id: string | null
+          created_at: string
+          id: string
+          label_color: string | null
+          label_text_color: string | null
+          name: string
+          photo_path: string | null
+          photo_url: string | null
+          price: number
+          product_type: Database["public"]["Enums"]["product_type"]
+          sale_units: Json
           shop_id: string
           size: string | null
           stock: number
@@ -2453,6 +2709,10 @@ export type Database = {
       update_shop_name: {
         Args: { _name: string; _shop: string }
         Returns: undefined
+      }
+      validate_product_sale_units: {
+        Args: { _sale_units: Json }
+        Returns: Json
       }
       write_audit_event: {
         Args: {
