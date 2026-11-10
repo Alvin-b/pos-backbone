@@ -214,3 +214,24 @@ KEYSTORE_PATH="/secure/keystores/counterpos-upload.jks" \
 ```
 
 The publishable Supabase key may be in the client. A service-role key, database password, or admin credential must never be placed in `BuildConfig`, resources, assets, logs, or an APK.
+
+
+## Daraja subscription payments
+
+The Android app calls `daraja-stk-push` with the signed-in owner session. The backend reads the authoritative subscription price from `shops`; it never trusts an amount from the APK. Android polls `daraja-stk-status`, which is authenticated and owner-only. Safaricom calls the public `daraja-stk-callback`; the callback verifies the checkout with STK Query and finalizes only after receipt, phone, amount, and checkout checks pass. A trial entitlement or an STK Query success alone is not treated as a paid subscription.
+
+Set these as Edge Function runtime secrets in Lovable/Supabase. Never place them in Android resources, Gradle properties, source control, or logs:
+
+- Required: `DARAJA_CONSUMER_KEY`, `DARAJA_CONSUMER_SECRET`, `DARAJA_SHORTCODE`, `DARAJA_PASSKEY`.
+- Live payments: `DARAJA_ENV=production`; use `DARAJA_ENV=sandbox` with test credentials. The code defaults to sandbox.
+- Optional: `DARAJA_TRANSACTION_TYPE` (default `CustomerPayBillOnline`), `DARAJA_CALLBACK_URL` (defaults to the Supabase callback URL), and `DARAJA_CALLBACK_SECRET` (independent HMAC secret; if omitted, the server-side service-role key is used only within Edge Functions).
+
+A custom callback URL must be a public HTTPS URL routed to `daraja-stk-callback`. The callback payment ID is HMAC-signed by the backend to prevent an unauthenticated callback from binding an arbitrary checkout to a payment. Apply migration `0046_daraja_subscription_payments.sql`, then deploy:
+
+```bash
+supabase functions deploy daraja-stk-push
+supabase functions deploy daraja-stk-status
+supabase functions deploy daraja-stk-callback --no-verify-jwt
+```
+
+Keep JWT verification enabled for `daraja-stk-push` and `daraja-stk-status`; disable it only for the Safaricom callback. The STK request uses the same `YYYYMMDDHHmmss` timestamp in its password and request body, formatted in `Africa/Nairobi`. See [Safaricom’s STK Query reference](https://developer.safaricom.co.ke/apis/MpesaExpressQuery) and the [STK Push implementation guide](https://www.codecapsules.io/blog/mpesa-daraja-api-stk-push-nodejs/) for timestamp and result-field details.

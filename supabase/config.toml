@@ -26,5 +26,8 @@ verify_jwt = false
 [functions.daraja-stk-push]
 verify_jwt = true
 
+[functions.daraja-stk-status]
+verify_jwt = true
+
 [functions.daraja-stk-callback]
 verify_jwt = false

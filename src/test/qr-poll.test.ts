@@ -1,7 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
+import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
 
-const source = readFileSync('supabase/functions/poll-access-challenge/index.ts', 'utf8').replace(/^import .*\n/, '');
+const source = transpileModule(readFileSync('supabase/functions/poll-access-challenge/index.ts', 'utf8'), {
+  compilerOptions: { module: ModuleKind.ESNext, target: ScriptTarget.ES2022 },
+}).outputText.replace(/^import .*;\s*$/gm, '');
 
 async function poll(status: string, claim = true) {
   let handler: (request: Request) => Promise<Response> = async () => new Response();

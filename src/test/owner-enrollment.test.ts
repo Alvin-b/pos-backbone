@@ -195,7 +195,9 @@ describe('owner Waiter enrollment', () => {
 
   it('redeems lower-case manual passkey entry with the canonical password', async () => {
     const createUser = vi.fn(async () => ({ data: { user: { id: 'waiter-1' } }, error: null }));
-    const rpc = vi.fn(async () => ({ data: { business_id: 'shop-1' }, error: null }));
+    const rpc = vi.fn(async (name: string) => name === 'redeem_employee_recovery_pass_atomic'
+      ? { data: null, error: { message: 'function redeem_employee_recovery_pass_atomic does not exist' } }
+      : { data: { business_id: 'shop-1' }, error: null });
     const db = makeDb({
       rows: { access_passes: {
         id: 'pass-1', shop_id: 'shop-1', role: 'cashier',
