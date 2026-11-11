@@ -26,7 +26,7 @@ describe('POS operation migration contract', () => {
     expect(migration).not.toMatch(/DROP (?:FUNCTION|TABLE)/);
     for (const kind of kinds) expect(migration).toContain(`WHEN '${kind}' THEN`);
   });
-  it('keeps POS idempotency, bill settlement, bulk sale-unit, and Daraja migrations ordered', () => {
+  it('keeps POS idempotency, bill settlement, bulk sale-unit, Daraja, and catalog migrations ordered', () => {
     const operationMigration = journal.entries.find((entry: { tag: string }) =>
       entry.tag === '0026_client_operation_idempotency');
     const billMigration = journal.entries.find((entry: { tag: string }) =>
@@ -35,17 +35,21 @@ describe('POS operation migration contract', () => {
       entry.tag === '0044_bulk_product_sale_units');
     const darajaMigration = journal.entries.find((entry: { tag: string }) =>
       entry.tag === '0046_daraja_subscription_payments');
+    const catalogMigration = journal.entries.find((entry: { tag: string }) =>
+      entry.tag === '0048_kenya_core_inventory_products');
     const last = journal.entries.at(-1);
     expect(operationMigration).toBeDefined();
     expect(billMigration).toBeDefined();
     expect(bulkMigration).toBeDefined();
     expect(darajaMigration).toBeDefined();
+    expect(catalogMigration).toBeDefined();
     expect(operationMigration.idx).toBeLessThan(billMigration.idx);
     expect(billMigration.idx).toBeLessThan(bulkMigration.idx);
     expect(bulkMigration.idx).toBeLessThan(darajaMigration.idx);
-    expect(darajaMigration.tag).toBe(last.tag);
-    expect(darajaMigration.idx).toBe(journal.entries.at(-2).idx + 1);
-    expect(darajaMigration.when).toBeGreaterThan(journal.entries.at(-2).when);
+    expect(darajaMigration.idx).toBeLessThan(catalogMigration.idx);
+    expect(catalogMigration.tag).toBe(last.tag);
+    expect(catalogMigration.idx).toBe(journal.entries.at(-2).idx + 1);
+    expect(catalogMigration.when).toBeGreaterThan(journal.entries.at(-2).when);
   });
   it('adds cross-device units and permits manual-depletion bulk sales in the backend contract', () => {
     expect(bulkUnitsMigration).toContain('ADD COLUMN IF NOT EXISTS sale_units jsonb');
