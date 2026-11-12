@@ -1,5 +1,5 @@
 import { adminClient, caller, corsHeaders, json } from "../_shared/access.ts";
-import { darajaStkQuery } from "../_shared/daraja.ts";
+import { darajaStkQuery, isSafaricomStillProcessing } from "../_shared/daraja.ts";
 
 const SHOP_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -81,18 +81,70 @@ Deno.serve(async (req) => {
       checkout_request_id: null,
       message: "No recent M-Pesa payment attempt was found.",
     });
-  if (payment.status !== "pending" || !payment.checkout_request_id)
+  const previouslyMisclassifiedAsFailed =
+    payment.status === "failed" && Number(payment.result_code) === 4999;
+  if (
+    (payment.status !== "pending" && !previouslyMisclassifiedAsFailed) ||
+    !payment.checkout_request_id
+  )
     return json(paymentResponse(payment));
+
+  let paymentForResponse: Record<string, unknown> = payment;
+  if (previouslyMisclassifiedAsFailed) {
+    const { error: recoveryError } = await db
+      .from("mpesa_subscription_payments")
+      .update({
+        status: "pending",
+        completed_at: null,
+        result_description: "Safaricom is still processing this request.",
+      })
+      .eq("id", payment.id)
+      .eq("status", "failed")
+      .eq("result_code", 4999);
+    if (recoveryError) {
+      console.error(
+        "Could not recover a previously misclassified processing payment",
+        recoveryError.message,
+      );
+    }
+    paymentForResponse = { ...payment, status: "pending" };
+  }
 
   try {
     const result = await darajaStkQuery(payment.checkout_request_id);
+    if (isSafaricomStillProcessing(result)) {
+      const description = String(
+        result.ResultDesc ??
+          result.ResponseDescription ??
+          "The transaction is still under processing.",
+      ).slice(0, 500);
+      const { error: pendingError } = await db
+        .from("mpesa_subscription_payments")
+        .update({
+          status: "pending",
+          result_code: 4999,
+          result_description: description,
+          completed_at: null,
+        })
+        .eq("id", payment.id)
+        .or("status.eq.pending,and(status.eq.failed,result_code.eq.4999)");
+      if (pendingError) {
+        console.error("Could not persist Safaricom processing status", pendingError.message);
+      }
+      return json(
+        paymentResponse(
+          { ...paymentForResponse, status: "pending", result_code: 4999 },
+          description,
+        ),
+      );
+    }
     if (
       String(result.CheckoutRequestID ?? "") !== payment.checkout_request_id ||
       String(result.ResponseCode ?? "") !== "0"
     ) {
       return json(
         paymentResponse(
-          payment,
+          paymentForResponse,
           "Safaricom has not returned a final payment result yet. Keep the app open or tap Check Now.",
         ),
       );
@@ -111,7 +163,7 @@ Deno.serve(async (req) => {
           completed_at: new Date().toISOString(),
         })
         .eq("id", payment.id)
-        .eq("status", "pending");
+        .or("status.eq.pending,and(status.eq.failed,result_code.eq.4999)");
       if (updateError)
         console.error("Could not save final Daraja failure status", updateError.message);
     } else if (resultCode === 0) {
@@ -119,12 +171,14 @@ Deno.serve(async (req) => {
       // to finalize billing. The callback is still required for activation.
       return json(
         paymentResponse(
-          payment,
+          paymentForResponse,
           "Safaricom reports the payment succeeded; waiting for the verified callback to finalize the receipt and subscription.",
         ),
       );
     } else {
-      return json(paymentResponse(payment, "Safaricom is still processing this request."));
+      return json(
+        paymentResponse(paymentForResponse, "Safaricom is still processing this request."),
+      );
     }
   } catch (error) {
     console.error(
@@ -133,7 +187,7 @@ Deno.serve(async (req) => {
     );
     return json(
       paymentResponse(
-        payment,
+        paymentForResponse,
         "Could not reach Safaricom to verify this payment. It may still complete; try again shortly.",
       ),
     );
@@ -144,6 +198,6 @@ Deno.serve(async (req) => {
     .select("status,checkout_request_id,result_code,result_description")
     .eq("id", payment.id)
     .maybeSingle();
-  if (latestError || !latest) return json(paymentResponse(payment));
+  if (latestError || !latest) return json(paymentResponse(paymentForResponse));
   return json(paymentResponse(latest));
 });

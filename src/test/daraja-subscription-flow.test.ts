@@ -7,6 +7,7 @@ import {
   flattenDiagnosticMessageText,
   transpileModule,
 } from "typescript";
+import { isSafaricomStillProcessing } from "../../supabase/functions/_shared/daraja.ts";
 
 const helper = readFileSync("supabase/functions/_shared/daraja.ts", "utf8");
 const push = readFileSync("supabase/functions/daraja-stk-push/index.ts", "utf8");
@@ -63,6 +64,20 @@ describe("Daraja subscription payment contract", () => {
     expect(status).toContain("The callback is still required for activation.");
     expect(status).not.toContain("finalize_mpesa_subscription_payment");
     expect(config).toContain("[functions.daraja-stk-status]\nverify_jwt = true");
+  });
+
+  it("keeps Safaricom result code 4999 pending and recovers older false failures", () => {
+    expect(isSafaricomStillProcessing({ ResultCode: "4999" })).toBe(true);
+    expect(isSafaricomStillProcessing({ ResponseCode: 4999 })).toBe(true);
+    expect(
+      isSafaricomStillProcessing({ ResultDesc: "The transaction is still under processing" }),
+    ).toBe(true);
+    expect(isSafaricomStillProcessing({ ResponseCode: "0", ResultCode: "0" })).toBe(false);
+    expect(status).toContain('payment.status === "failed" && Number(payment.result_code) === 4999');
+    expect(callback).toContain("isSafaricomStillProcessing(query)");
+    expect(callback).toContain("Number(payment.result_code) !== 4999");
+    expect(status).toContain('status: "pending"');
+    expect(status).toContain("Safaricom is still processing this request.");
   });
 
   it("correlates the callback with the payment row and verifies with Safaricom before finalizing", () => {

@@ -41,6 +41,14 @@ export function normalizeKenyanPhone(value: unknown): string | null {
   return /^254[17]\d{8}$/.test(normalized) ? normalized : null;
 }
 
+export function isSafaricomStillProcessing(result: Record<string, unknown>): boolean {
+  const codeIsProcessing = [result.ResultCode, result.ResponseCode].some(
+    (code) => Number(code) === 4999,
+  );
+  const description = String(result.ResultDesc ?? result.ResponseDescription ?? "");
+  return codeIsProcessing || /transaction is still under processing/i.test(description);
+}
+
 export function darajaTimestamp(now = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Africa/Nairobi",
@@ -132,13 +140,11 @@ export async function darajaAccessToken(): Promise<string> {
   }
 }
 
-function isInvalidDarajaAccessToken(
-  response: Response,
-  payload: Record<string, unknown>,
-): boolean {
+function isInvalidDarajaAccessToken(response: Response, payload: Record<string, unknown>): boolean {
   if (response.status === 401) return true;
-  return [payload.errorMessage, payload.error_description, payload.message, payload.error]
-    .some((value) => typeof value === "string" && /invalid[\s_-]*access[\s_-]*token/i.test(value));
+  return [payload.errorMessage, payload.error_description, payload.message, payload.error].some(
+    (value) => typeof value === "string" && /invalid[\s_-]*access[\s_-]*token/i.test(value),
+  );
 }
 
 function invalidateDarajaAccessToken(rejectedToken: string) {

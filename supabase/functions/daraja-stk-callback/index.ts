@@ -1,6 +1,7 @@
 import { adminClient, corsHeaders, json } from "../_shared/access.ts";
 import {
   darajaStkQuery,
+  isSafaricomStillProcessing,
   normalizeKenyanPhone,
   verifyDarajaCallbackSignature,
 } from "../_shared/daraja.ts";
@@ -19,7 +20,7 @@ function sleep(ms: number) {
 async function findByCheckout(db: ReturnType<typeof adminClient>, checkoutId: string) {
   return await db
     .from("mpesa_subscription_payments")
-    .select("id,shop_id,phone_number,amount_ksh,status,checkout_request_id")
+    .select("id,shop_id,phone_number,amount_ksh,status,result_code,checkout_request_id")
     .eq("checkout_request_id", checkoutId)
     .maybeSingle();
 }
@@ -70,7 +71,7 @@ Deno.serve(async (req) => {
   if (paymentId) {
     const { data: byId, error: idError } = await db
       .from("mpesa_subscription_payments")
-      .select("id,shop_id,phone_number,amount_ksh,status,checkout_request_id")
+      .select("id,shop_id,phone_number,amount_ksh,status,result_code,checkout_request_id")
       .eq("id", paymentId)
       .maybeSingle();
     if (idError) {
@@ -101,7 +102,7 @@ Deno.serve(async (req) => {
       }
       const { data: linked, error: linkedError } = await db
         .from("mpesa_subscription_payments")
-        .select("id,shop_id,phone_number,amount_ksh,status,checkout_request_id")
+        .select("id,shop_id,phone_number,amount_ksh,status,result_code,checkout_request_id")
         .eq("id", paymentId)
         .maybeSingle();
       if (linkedError) {
@@ -128,22 +129,48 @@ Deno.serve(async (req) => {
     !payment ||
     payment.checkout_request_id !== checkoutId ||
     payment.status === "paid" ||
-    payment.status === "failed"
+    (payment.status === "failed" && Number(payment.result_code) !== 4999)
   ) {
     return json({ ResultCode: 0, ResultDesc: "Callback accepted" });
   }
 
+  if (payment.status === "failed" && Number(payment.result_code) === 4999) {
+    const { error: recoveryError } = await db
+      .from("mpesa_subscription_payments")
+      .update({
+        status: "pending",
+        completed_at: null,
+        result_description: "Safaricom is still processing this request.",
+      })
+      .eq("id", payment.id)
+      .eq("status", "failed")
+      .eq("result_code", 4999);
+    if (recoveryError) {
+      console.error(
+        "Could not recover callback for a previously misclassified payment",
+        recoveryError.message,
+      );
+    }
+    payment = { ...payment, status: "pending" };
+  }
+
   try {
     const query = await darajaStkQuery(checkoutId);
-    if (
-      String(query.CheckoutRequestID ?? "") !== checkoutId ||
-      String(query.ResponseCode ?? "") !== "0"
-    ) {
+    if (String(query.CheckoutRequestID ?? "") !== checkoutId) {
       console.error(
-        "STK Query did not confirm checkout identity/success",
+        "STK Query checkout ID did not match the callback",
         checkoutId,
         JSON.stringify(query).slice(0, 600),
       );
+      return json({ ResultCode: 0, ResultDesc: "Payment remains pending verification" });
+    }
+
+    if (isSafaricomStillProcessing(query)) {
+      console.info("Safaricom is still processing callback checkout", checkoutId);
+      return json({ ResultCode: 0, ResultDesc: "Payment remains pending verification" });
+    }
+    if (String(query.ResponseCode ?? "") !== "0") {
+      console.info("STK Query has not returned a final result for checkout", checkoutId);
       return json({ ResultCode: 0, ResultDesc: "Payment remains pending verification" });
     }
 
