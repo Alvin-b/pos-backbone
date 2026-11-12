@@ -132,6 +132,46 @@ export async function darajaAccessToken(): Promise<string> {
   }
 }
 
+function isInvalidDarajaAccessToken(
+  response: Response,
+  payload: Record<string, unknown>,
+): boolean {
+  if (response.status === 401) return true;
+  return [payload.errorMessage, payload.error_description, payload.message, payload.error]
+    .some((value) => typeof value === "string" && /invalid[\s_-]*access[\s_-]*token/i.test(value));
+}
+
+function invalidateDarajaAccessToken(rejectedToken: string) {
+  if (cachedAccessToken !== rejectedToken) return;
+  cachedAccessToken = null;
+  accessTokenExpiresAt = 0;
+}
+
+async function darajaFetchJson(url: string, init: RequestInit) {
+  let token = await darajaAccessToken();
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const headers = new Headers(init.headers);
+    headers.set("Authorization", `Bearer ${token}`);
+    const response = await fetch(url, { ...init, headers });
+    const rawPayload = await response.json().catch(() => ({}));
+    const payload =
+      rawPayload && typeof rawPayload === "object" && !Array.isArray(rawPayload)
+        ? (rawPayload as Record<string, unknown>)
+        : {};
+
+    if (attempt === 0 && isInvalidDarajaAccessToken(response, payload)) {
+      console.warn("Daraja rejected the access token; refreshing once");
+      invalidateDarajaAccessToken(token);
+      token = await darajaAccessToken();
+      continue;
+    }
+
+    return { response, payload };
+  }
+
+  throw new Error("Daraja access token refresh did not complete.");
+}
+
 export async function darajaStkPush(args: {
   phone: string;
   amount: number;
@@ -142,29 +182,29 @@ export async function darajaStkPush(args: {
   const config = darajaConfig();
   const timestamp = darajaTimestamp();
   const password = base64(`${config.shortcode}${config.passkey}${timestamp}`);
-  const token = await darajaAccessToken();
-  const response = await fetch(`${config.baseUrl}/mpesa/stkpush/v1/processrequest`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
+  const { response, payload } = await darajaFetchJson(
+    `${config.baseUrl}/mpesa/stkpush/v1/processrequest`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        BusinessShortCode: config.shortcode,
+        Password: password,
+        Timestamp: timestamp,
+        TransactionType: config.transactionType,
+        Amount: args.amount,
+        PartyA: args.phone,
+        PartyB: config.shortcode,
+        PhoneNumber: args.phone,
+        CallBackURL: args.callbackUrl,
+        AccountReference: args.accountReference.slice(0, 12),
+        TransactionDesc: args.description.slice(0, 13),
+      }),
+      signal: AbortSignal.timeout(20_000),
     },
-    body: JSON.stringify({
-      BusinessShortCode: config.shortcode,
-      Password: password,
-      Timestamp: timestamp,
-      TransactionType: config.transactionType,
-      Amount: args.amount,
-      PartyA: args.phone,
-      PartyB: config.shortcode,
-      PhoneNumber: args.phone,
-      CallBackURL: args.callbackUrl,
-      AccountReference: args.accountReference.slice(0, 12),
-      TransactionDesc: args.description.slice(0, 13),
-    }),
-    signal: AbortSignal.timeout(20_000),
-  });
-  const payload = await response.json().catch(() => ({}));
+  );
   if (!response.ok || String(payload.ResponseCode ?? "") !== "0" || !payload.CheckoutRequestID) {
     console.error(
       "Daraja STK Push rejected",
@@ -194,22 +234,22 @@ export async function darajaStkQuery(checkoutRequestId: string) {
   const config = darajaConfig();
   const timestamp = darajaTimestamp();
   const password = base64(`${config.shortcode}${config.passkey}${timestamp}`);
-  const token = await darajaAccessToken();
-  const response = await fetch(`${config.baseUrl}/mpesa/stkpushquery/v1/query`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
+  const { response, payload } = await darajaFetchJson(
+    `${config.baseUrl}/mpesa/stkpushquery/v1/query`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        BusinessShortCode: config.shortcode,
+        Password: password,
+        Timestamp: timestamp,
+        CheckoutRequestID: checkoutRequestId,
+      }),
+      signal: AbortSignal.timeout(20_000),
     },
-    body: JSON.stringify({
-      BusinessShortCode: config.shortcode,
-      Password: password,
-      Timestamp: timestamp,
-      CheckoutRequestID: checkoutRequestId,
-    }),
-    signal: AbortSignal.timeout(20_000),
-  });
-  const payload = await response.json().catch(() => ({}));
+  );
   if (!response.ok) {
     console.error(
       "Daraja STK Query failed",

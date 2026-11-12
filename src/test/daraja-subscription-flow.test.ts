@@ -36,9 +36,16 @@ describe("Daraja subscription payment contract", () => {
     );
   });
 
+  it("refreshes and retries once when Daraja explicitly rejects an access token", () => {
+    expect(helper).toContain("isInvalidDarajaAccessToken");
+    expect(helper).toContain("invalidateDarajaAccessToken");
+    expect(helper).toContain("Daraja rejected the access token; refreshing once");
+    expect(helper).toContain("darajaFetchJson");
+  });
+
   it("uses server-owned pricing and reuses an active STK attempt instead of sending duplicates", () => {
     expect(push).toContain(
-      '.select("id,name,status,subscription_price_ksh,subscription_plan_days")',
+      '.select("id,name,status,subscription_price_ksh,subscription_plan_days,payment_lock_active,payment_lock_amount_ksh")',
     );
     expect(push).toContain('.in("status", ["initiating", "pending"])');
     expect(push).toContain("An M-Pesa prompt for KSh");
