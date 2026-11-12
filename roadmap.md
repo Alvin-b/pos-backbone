@@ -1,6 +1,6 @@
 # Sign-in deployment
 - [x] Refresh and retry Daraja once when an STK request reports an invalid access token; deployed the updated payment functions.
-- [ ] Confirm whether the saved Daraja credentials are sandbox or production, then set the matching DARAJA_ENV value.
+- [x] Set DARAJA_ENV to production for the user's production credentials and redeploy the M-Pesa payment functions.
 - [ ] Stop starter dining-table seeding and enforce secure table-name validation in the linked backend.
 - [ ] Clean only identified legacy starter tables without orders; verify creation, persistence, isolation, and order preservation.
 - [ ] Update mobile table-screen integration instructions; mobile screen source is not present in this backend project.
