@@ -9,9 +9,15 @@ export function darajaConfig() {
   const consumerSecret = Deno.env.get("DARAJA_CONSUMER_SECRET") ?? "";
   const shortcode = Deno.env.get("DARAJA_SHORTCODE") ?? "";
   const passkey = Deno.env.get("DARAJA_PASSKEY") ?? "";
+  const transactionType = Deno.env.get("DARAJA_TRANSACTION_TYPE") ?? "";
   if (!consumerKey || !consumerSecret || !shortcode || !passkey) {
     throw new Error(
       "Daraja is not configured. Set DARAJA_CONSUMER_KEY, DARAJA_CONSUMER_SECRET, DARAJA_SHORTCODE and DARAJA_PASSKEY.",
+    );
+  }
+  if (!["CustomerPayBillOnline", "CustomerBuyGoodsOnline"].includes(transactionType)) {
+    throw new Error(
+      "Set DARAJA_TRANSACTION_TYPE to CustomerPayBillOnline for PayBill or CustomerBuyGoodsOnline for Buy Goods Till.",
     );
   }
   return {
@@ -20,7 +26,7 @@ export function darajaConfig() {
     consumerSecret,
     shortcode,
     passkey,
-    transactionType: Deno.env.get("DARAJA_TRANSACTION_TYPE") || "CustomerPayBillOnline",
+    transactionType,
     baseUrl:
       environment === "production"
         ? "https://api.safaricom.co.ke"

@@ -1,4 +1,5 @@
 # Sign-in deployment
+- [ ] Set the Daraja transaction type to Buy Goods Till mode and deploy the corrected M-Pesa handlers; test a sandbox STK prompt.
 - [x] Refresh and retry Daraja once when an STK request reports an invalid access token; deployed the updated payment functions.
 - [x] Set DARAJA_ENV to production for the user's production credentials and redeploy the M-Pesa payment functions.
 - [ ] Stop starter dining-table seeding and enforce secure table-name validation in the linked backend.

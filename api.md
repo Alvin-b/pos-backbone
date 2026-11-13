@@ -419,6 +419,42 @@ The repository contains seven Supabase Edge Functions. Deploy every route to
 the linked project with the JWT setting shown below; the service-role secret is
 server-side only and must never be shipped in the APK.
 
+### M-Pesa subscription payments
+
+The subscription payment endpoints are deployed as `daraja-stk-push`,
+`daraja-stk-status`, and `daraja-stk-callback`. The first two require the
+signed-in owner's user access token; invoke them with the authenticated
+Supabase client so it attaches the current session. Never send Daraja
+credentials from the mobile app.
+
+`daraja-stk-push` accepts `{ shop_id, phone_number }`. The server checks that
+the caller is an active owner, reads the subscription amount and duration from
+the business record, writes an initiating payment attempt, and requests the
+phone prompt. An accepted request is only `pending`, not paid. A recent pending
+prompt is reused rather than sending a second charge. Show the returned
+`customer_message` and retain `checkout_request_id` for status checks.
+
+`daraja-stk-status` accepts `{ shop_id, checkout_request_id? }` and returns
+`payment_status` (`initiating`, `pending`, `paid`, or `failed`). Keep a payment
+pending while Safaricom is processing it; only a verified callback finalizes a
+successful subscription. The callback URL is the deployed
+`daraja-stk-callback` function and must be publicly reachable over HTTPS.
+
+Daraja credentials are stored only in Lovable Cloud secrets:
+`DARAJA_CONSUMER_KEY`, `DARAJA_CONSUMER_SECRET`, `DARAJA_SHORTCODE`,
+`DARAJA_PASSKEY`, `DARAJA_ENV`, and `DARAJA_TRANSACTION_TYPE`. Use
+`CustomerBuyGoodsOnline` for a Buy Goods Till and `CustomerPayBillOnline` for a
+PayBill. The transaction type must match the saved shortcode; the backend now
+refuses to send a prompt when it is missing or invalid rather than silently
+using PayBill mode. Keep sandbox credentials paired with `DARAJA_ENV=sandbox`
+and production credentials with `DARAJA_ENV=production`.
+
+The callback defaults to
+`https://pvcqfoycrqtnirbwtccm.supabase.co/functions/v1/daraja-stk-callback`;
+set `DARAJA_CALLBACK_URL` only if using this project's own alternate public
+HTTPS URL. Register that exact URL in the Daraja app configuration. Do not use
+a callback URL from another project.
+
 | Function | `verify_jwt` | Client purpose |
 |---|---:|---|
 | `create-access-challenge` | `false` | Create a staff QR enrollment challenge |

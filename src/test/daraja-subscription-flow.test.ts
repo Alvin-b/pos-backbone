@@ -22,10 +22,15 @@ describe("Daraja subscription payment contract", () => {
       "DARAJA_CONSUMER_SECRET",
       "DARAJA_SHORTCODE",
       "DARAJA_PASSKEY",
+      "DARAJA_TRANSACTION_TYPE",
     ]) {
       expect(helper).toContain(`Deno.env.get("${key}")`);
     }
     expect(helper).toContain('Deno.env.get("DARAJA_ENV") ?? "sandbox"');
+    expect(helper).toContain('"CustomerBuyGoodsOnline"');
+    expect(helper).toContain('"CustomerPayBillOnline"');
+    expect(helper).toContain('TransactionType: config.transactionType');
+    expect(helper).not.toContain('DARAJA_TRANSACTION_TYPE") || "CustomerPayBillOnline"');
     expect(helper).toContain('timeZone: "Africa/Nairobi"');
     expect(helper).toContain("darajaCallbackSignature");
     expect(helper).toContain("verifyDarajaCallbackSignature");
