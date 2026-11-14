@@ -7,17 +7,11 @@ export function darajaConfig() {
   }
   const consumerKey = Deno.env.get("DARAJA_CONSUMER_KEY") ?? "";
   const consumerSecret = Deno.env.get("DARAJA_CONSUMER_SECRET") ?? "";
-  const shortcode = Deno.env.get("DARAJA_SHORTCODE") ?? "";
+  const shortcode = Deno.env.get("MPESA_SHORTCODE") ?? "";
   const passkey = Deno.env.get("DARAJA_PASSKEY") ?? "";
-  const transactionType = Deno.env.get("DARAJA_TRANSACTION_TYPE") ?? "";
   if (!consumerKey || !consumerSecret || !shortcode || !passkey) {
     throw new Error(
-      "Daraja is not configured. Set DARAJA_CONSUMER_KEY, DARAJA_CONSUMER_SECRET, DARAJA_SHORTCODE and DARAJA_PASSKEY.",
-    );
-  }
-  if (!["CustomerPayBillOnline", "CustomerBuyGoodsOnline"].includes(transactionType)) {
-    throw new Error(
-      "Set DARAJA_TRANSACTION_TYPE to CustomerPayBillOnline for PayBill or CustomerBuyGoodsOnline for Buy Goods Till.",
+      "Daraja is not configured. Set DARAJA_CONSUMER_KEY, DARAJA_CONSUMER_SECRET, MPESA_SHORTCODE and DARAJA_PASSKEY.",
     );
   }
   return {
@@ -26,7 +20,6 @@ export function darajaConfig() {
     consumerSecret,
     shortcode,
     passkey,
-    transactionType,
     baseUrl:
       environment === "production"
         ? "https://api.safaricom.co.ke"
@@ -187,7 +180,6 @@ async function darajaFetchJson(url: string, init: RequestInit) {
 export async function darajaStkPush(args: {
   phone: string;
   amount: number;
-  accountReference: string;
   description: string;
   callbackUrl: string;
 }) {
@@ -205,13 +197,13 @@ export async function darajaStkPush(args: {
         BusinessShortCode: config.shortcode,
         Password: password,
         Timestamp: timestamp,
-        TransactionType: config.transactionType,
+        TransactionType: "CustomerPayBillOnline",
         Amount: args.amount,
         PartyA: args.phone,
-        PartyB: config.shortcode,
+        PartyB: "522522",
         PhoneNumber: args.phone,
         CallBackURL: args.callbackUrl,
-        AccountReference: args.accountReference.slice(0, 12),
+        AccountReference: "7718913",
         TransactionDesc: args.description.slice(0, 13),
       }),
       signal: AbortSignal.timeout(20_000),

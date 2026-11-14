@@ -179,7 +179,6 @@ Deno.serve(async (req) => {
     const result = await darajaStkPush({
       phone,
       amount,
-      accountReference: `CP${shopId.replaceAll("-", "").slice(0, 10)}`,
       description: "POS Subscription",
       callbackUrl,
     });

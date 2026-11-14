@@ -440,14 +440,18 @@ pending while Safaricom is processing it; only a verified callback finalizes a
 successful subscription. The callback URL is the deployed
 `daraja-stk-callback` function and must be publicly reachable over HTTPS.
 
-Daraja credentials are stored only in Lovable Cloud secrets:
-`DARAJA_CONSUMER_KEY`, `DARAJA_CONSUMER_SECRET`, `DARAJA_SHORTCODE`,
-`DARAJA_PASSKEY`, `DARAJA_ENV`, and `DARAJA_TRANSACTION_TYPE`. Use
-`CustomerBuyGoodsOnline` for a Buy Goods Till and `CustomerPayBillOnline` for a
-PayBill. The transaction type must match the saved shortcode; the backend now
-refuses to send a prompt when it is missing or invalid rather than silently
-using PayBill mode. Keep sandbox credentials paired with `DARAJA_ENV=sandbox`
-and production credentials with `DARAJA_ENV=production`.
+Daraja credentials and merchant configuration are stored only in Lovable Cloud
+secrets: `DARAJA_CONSUMER_KEY`, `DARAJA_CONSUMER_SECRET`, `MPESA_SHORTCODE`,
+`DARAJA_PASSKEY`, and `DARAJA_ENV`. This KCB PayBill request sends
+`TransactionType=CustomerPayBillOnline`, `PartyB=522522`, and
+`AccountReference=7718913`; `BusinessShortCode` comes from `MPESA_SHORTCODE`.
+The customer's normalized Kenyan number is used for both `PartyA` and
+`PhoneNumber`. The STK password is generated server-side from the configured
+shortcode, passkey, and timestamp. Keep sandbox credentials paired with
+`DARAJA_ENV=sandbox` and production credentials with `DARAJA_ENV=production`;
+the shortcode and passkey must come from the same Daraja setup and environment.
+The amount is loaded from trusted business subscription data, never accepted
+from the mobile request.
 
 The callback defaults to
 `https://pvcqfoycrqtnirbwtccm.supabase.co/functions/v1/daraja-stk-callback`;

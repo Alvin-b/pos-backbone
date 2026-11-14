@@ -20,17 +20,15 @@ describe("Daraja subscription payment contract", () => {
     for (const key of [
       "DARAJA_CONSUMER_KEY",
       "DARAJA_CONSUMER_SECRET",
-      "DARAJA_SHORTCODE",
+      "MPESA_SHORTCODE",
       "DARAJA_PASSKEY",
-      "DARAJA_TRANSACTION_TYPE",
     ]) {
       expect(helper).toContain(`Deno.env.get("${key}")`);
     }
     expect(helper).toContain('Deno.env.get("DARAJA_ENV") ?? "sandbox"');
-    expect(helper).toContain('"CustomerBuyGoodsOnline"');
-    expect(helper).toContain('"CustomerPayBillOnline"');
-    expect(helper).toContain('TransactionType: config.transactionType');
-    expect(helper).not.toContain('DARAJA_TRANSACTION_TYPE") || "CustomerPayBillOnline"');
+    expect(helper).toContain('TransactionType: "CustomerPayBillOnline"');
+    expect(helper).not.toContain('Deno.env.get("DARAJA_SHORTCODE")');
+    expect(helper).not.toContain('Deno.env.get("DARAJA_TRANSACTION_TYPE")');
     expect(helper).toContain('timeZone: "Africa/Nairobi"');
     expect(helper).toContain("darajaCallbackSignature");
     expect(helper).toContain("verifyDarajaCallbackSignature");
@@ -40,6 +38,18 @@ describe("Daraja subscription payment contract", () => {
     expect(helper).not.toMatch(
       /console\.(?:log|info)\([^\n]*(?:consumerKey|consumerSecret|passkey)/i,
     );
+  });
+
+  it("keeps the KCB merchant fields in their specified positions", () => {
+    expect(helper).toContain('PartyB: "522522"');
+    expect(helper).toContain('AccountReference: "7718913"');
+    expect(helper).toContain("PartyA: args.phone");
+    expect(helper).toContain("PhoneNumber: args.phone");
+    expect(helper).toContain("BusinessShortCode: config.shortcode");
+  });
+
+  it("builds the STK password from the configured shortcode and passkey", () => {
+    expect(helper).toContain("base64(`${config.shortcode}${config.passkey}${timestamp}`)");
   });
 
   it("refreshes and retries once when Daraja explicitly rejects an access token", () => {
