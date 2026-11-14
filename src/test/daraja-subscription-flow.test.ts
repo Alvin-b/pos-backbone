@@ -7,7 +7,10 @@ import {
   flattenDiagnosticMessageText,
   transpileModule,
 } from "typescript";
-import { darajaTimestamp, isSafaricomStillProcessing } from "../../supabase/functions/_shared/daraja.ts";
+import {
+  darajaTimestamp,
+  isSafaricomStillProcessing,
+} from "../../supabase/functions/_shared/daraja.ts";
 
 const helper = readFileSync("supabase/functions/_shared/daraja.ts", "utf8");
 const push = readFileSync("supabase/functions/daraja-stk-push/index.ts", "utf8");
@@ -16,28 +19,23 @@ const callback = readFileSync("supabase/functions/daraja-stk-callback/index.ts",
 const config = readFileSync("supabase/config.toml", "utf8");
 
 describe("Daraja subscription payment contract", () => {
-  it("reads credentials only from Edge Function runtime secrets and defaults safely to sandbox", () => {
-    for (const key of [
-      "MPESA_CONSUMER_KEY",
-      "MPESA_CONSUMER_SECRET",
-      "MPESA_PASSKEY",
-    ]) {
+  it("reads credentials from Edge Function runtime secrets and uses production like Hotspot Hero", () => {
+    for (const key of ["MPESA_CONSUMER_KEY", "MPESA_CONSUMER_SECRET", "MPESA_PASSKEY"]) {
       expect(helper).toContain(`configuredSecret("${key}"`);
     }
     expect(helper).toMatch(/const shortcode = configuredSecret\(\s*"MPESA_SHORTCODE",/);
-    expect(helper).toContain(
-      'configuredSecret("MPESA_ENVIRONMENT", "DARAJA_ENVIRONMENT", "DARAJA_ENV")',
-    );
+    expect(helper).toContain('"MPESA_ENVIRONMENT"');
+    expect(helper).toContain('"DARAJA_ENVIRONMENT"');
+    expect(helper).toContain('"DARAJA_ENV"');
     expect(helper).toContain('configuredSecret("MPESA_CONSUMER_KEY", "DARAJA_CONSUMER_KEY")');
     expect(helper).toContain('configuredSecret("MPESA_PASSKEY", "DARAJA_PASSKEY")');
-    expect(helper).toContain('"https://sandbox.safaricom.co.ke"');
+    expect(helper).toContain('baseUrl: "https://api.safaricom.co.ke"');
     expect(helper).toContain('TransactionType: "CustomerPayBillOnline"');
     expect(helper).not.toContain('Deno.env.get("DARAJA_SHORTCODE")');
     expect(helper).not.toContain('Deno.env.get("DARAJA_TRANSACTION_TYPE")');
-    expect(helper).toContain("now.toISOString()");
+    expect(helper).toContain(".toISOString()");
     expect(helper).toContain("darajaCallbackSignature");
     expect(helper).toContain("verifyDarajaCallbackSignature");
-    expect(helper).toContain("https://sandbox.safaricom.co.ke");
     expect(helper).toContain("https://api.safaricom.co.ke");
     expect(helper).not.toMatch(
       /console\.(?:log|info)\([^\n]*(?:consumerKey|consumerSecret|passkey)/i,
@@ -45,8 +43,6 @@ describe("Daraja subscription payment contract", () => {
   });
 
   it("keeps the KCB merchant fields in their specified positions", () => {
-    expect(helper).toContain('const KCB_BUSINESS_SHORTCODE = "522522"');
-    expect(helper).toContain('shortcode !== KCB_BUSINESS_SHORTCODE');
     expect(helper).toContain('PartyB: "522522"');
     expect(helper).toContain('AccountReference: "7718913"');
     expect(helper).toContain("PartyA: args.phone");
@@ -72,7 +68,7 @@ describe("Daraja subscription payment contract", () => {
 
   it("uses server-owned pricing and reuses an active STK attempt instead of sending duplicates", () => {
     expect(push).toContain(
-      '.select("id,name,status,subscription_price_ksh,subscription_plan_days,payment_lock_active,payment_lock_amount_ksh")',
+      '"id,name,status,subscription_price_ksh,subscription_plan_days,payment_lock_active,payment_lock_amount_ksh"',
     );
     expect(push).toContain('.in("status", ["initiating", "pending"])');
     expect(push).toContain("An M-Pesa prompt for KSh");

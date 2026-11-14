@@ -9,11 +9,13 @@ function configuredSecret(...names: string[]): string {
 }
 
 export function darajaConfig() {
-  const environment = (
-    configuredSecret("MPESA_ENVIRONMENT", "DARAJA_ENVIRONMENT", "DARAJA_ENV") || "sandbox"
+  const configuredEnvironment = configuredSecret(
+    "MPESA_ENVIRONMENT",
+    "DARAJA_ENVIRONMENT",
+    "DARAJA_ENV",
   ).toLowerCase();
-  if (environment !== "sandbox" && environment !== "production") {
-    throw new Error("MPESA_ENVIRONMENT must be sandbox or production");
+  if (configuredEnvironment && configuredEnvironment !== "production") {
+    throw new Error("DARAJA_ENV must be production for subscription payments");
   }
   const consumerKey = configuredSecret("MPESA_CONSUMER_KEY", "DARAJA_CONSUMER_KEY");
   const consumerSecret = configuredSecret("MPESA_CONSUMER_SECRET", "DARAJA_CONSUMER_SECRET");
@@ -29,15 +31,12 @@ export function darajaConfig() {
     );
   }
   return {
-    environment: environment as DarajaEnvironment,
+    environment: "production" as const,
     consumerKey,
     consumerSecret,
     shortcode,
     passkey,
-    baseUrl:
-      environment === "production"
-        ? "https://api.safaricom.co.ke"
-        : "https://sandbox.safaricom.co.ke",
+    baseUrl: "https://api.safaricom.co.ke",
   };
 }
 
@@ -199,6 +198,7 @@ export async function darajaStkPush(args: {
     environment: config.environment,
     phone_last4: args.phone.slice(-4),
     amount: args.amount,
+    daraja_base_url: config.baseUrl,
     business_shortcode_last3: config.shortcode.slice(-3),
     party_b: "522522",
     transaction_type: "CustomerPayBillOnline",
