@@ -24,6 +24,12 @@ Deno.serve(async (req) => {
   if (!SHOP_ID_PATTERN.test(shopId)) return json({ success: false, error: "invalid_shop_id" }, 400);
   if (!phone) return json({ success: false, error: "Enter a valid Kenyan M-Pesa number." }, 400);
 
+  console.log("[daraja-stk-push] request received", {
+    shop_id: shopId,
+    phone_last4: phone.slice(-4),
+    phone_length: phone.length,
+  });
+
   const db = adminClient();
   const { data: member, error: membershipError } = await db
     .from("shop_members")
@@ -181,6 +187,12 @@ Deno.serve(async (req) => {
   }
 
   try {
+    console.log("[daraja-stk-push] calling Safaricom", {
+      shop_id: shopId,
+      phone_last4: phone.slice(-4),
+      amount_ksh: amount,
+      plan_days: planDays,
+    });
     const result = await darajaStkPush({
       phone,
       amount,
@@ -188,6 +200,11 @@ Deno.serve(async (req) => {
       callbackUrl,
     });
     if (!result.success) {
+      console.error("[daraja-stk-push] Safaricom rejected request", {
+        shop_id: shopId,
+        error: result.description,
+        diagnostics: result.diagnostics,
+      });
       await db
         .from("mpesa_subscription_payments")
         .update({
@@ -202,6 +219,14 @@ Deno.serve(async (req) => {
         502,
       );
     }
+
+    console.log("[daraja-stk-push] Safaricom accepted request", {
+      shop_id: shopId,
+      checkout_request_id: result.checkoutRequestId,
+      merchant_request_id: result.merchantRequestId,
+      customer_message: result.customerMessage,
+      diagnostics: result.diagnostics,
+    });
 
     const { error: updateError } = await db
       .from("mpesa_subscription_payments")
@@ -246,6 +271,11 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Daraja request failed.";
+    console.error("[daraja-stk-push] exception", {
+      shop_id: shopId,
+      phone_last4: phone.slice(-4),
+      error: message,
+    });
     // Do not mark an ambiguous network failure as failed: Safaricom may have
     // accepted the request and the callback may still arrive.
     if (
