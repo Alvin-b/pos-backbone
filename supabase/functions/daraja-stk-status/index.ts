@@ -1,5 +1,9 @@
 import { adminClient, caller, corsHeaders, json } from "../_shared/access.ts";
-import { darajaStkQuery, isSafaricomStillProcessing } from "../_shared/daraja.ts";
+import {
+  darajaStkQuery,
+  isDarajaCredentialError,
+  isSafaricomStillProcessing,
+} from "../_shared/daraja.ts";
 
 const SHOP_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -112,6 +116,24 @@ Deno.serve(async (req) => {
 
   try {
     const result = await darajaStkQuery(payment.checkout_request_id);
+    if (isDarajaCredentialError(result)) {
+      const providerDescription = String(
+        result.ResultDesc ?? result.ResponseDescription ?? "Wrong credentials",
+      ).slice(0, 160);
+      const message =
+        `Safaricom rejected payment verification (${providerDescription}). ` +
+        "The original payment outcome is unresolved. Check MPESA_SHORTCODE and MPESA_PASSKEY " +
+        "against the production Daraja app; do not start another payment until this attempt is checked.";
+      console.error("Daraja STK Query rejected credentials", {
+        checkout_request_id: payment.checkout_request_id,
+        result_code: Number(result.ResultCode ?? result.ResponseCode),
+        result_description: providerDescription,
+      });
+      return json({
+        ...paymentResponse(paymentForResponse, message),
+        payment_status: "needs_attention",
+      });
+    }
     if (isSafaricomStillProcessing(result)) {
       const description = String(
         result.ResultDesc ??

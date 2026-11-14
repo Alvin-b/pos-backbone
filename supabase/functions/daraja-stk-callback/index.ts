@@ -1,6 +1,7 @@
 import { adminClient, corsHeaders, json } from "../_shared/access.ts";
 import {
   darajaStkQuery,
+  isDarajaCredentialError,
   isSafaricomStillProcessing,
   normalizeKenyanPhone,
   verifyDarajaCallbackSignature,
@@ -163,6 +164,21 @@ Deno.serve(async (req) => {
         JSON.stringify(query).slice(0, 600),
       );
       return json({ ResultCode: 0, ResultDesc: "Payment remains pending verification" });
+    }
+
+    if (isDarajaCredentialError(query)) {
+      console.error("Daraja STK Query rejected credentials during callback verification", {
+        checkout_request_id: checkoutId,
+        result_code: Number(query.ResultCode ?? query.ResponseCode),
+        result_description: String(
+          query.ResultDesc ?? query.ResponseDescription ?? "Wrong credentials",
+        ).slice(0, 160),
+        callback_result_code: Number(stk?.ResultCode),
+      });
+      return json({
+        ResultCode: 0,
+        ResultDesc: "Callback received; payment remains unresolved until credentials are corrected.",
+      });
     }
 
     if (isSafaricomStillProcessing(query)) {

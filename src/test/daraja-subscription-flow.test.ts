@@ -10,6 +10,7 @@ import {
 import {
   darajaTimestamp,
   darajaConfig,
+  isDarajaCredentialError,
   isSafaricomStillProcessing,
 } from "../../supabase/functions/_shared/daraja.ts";
 
@@ -132,13 +133,18 @@ describe("Daraja subscription payment contract", () => {
     expect(config).toContain("[functions.daraja-stk-status]\nverify_jwt = true");
   });
 
-  it("keeps Safaricom result code 4999 pending and recovers older false failures", () => {
-    expect(isSafaricomStillProcessing({ ResultCode: "4999" })).toBe(true);
-    expect(isSafaricomStillProcessing({ ResponseCode: 4999 })).toBe(true);
+  it("distinguishes Safaricom processing from 4999 credential errors", () => {
+    expect(isSafaricomStillProcessing({ ResultCode: "4999", ResultDesc: "Transaction is still under processing" })).toBe(true);
+    expect(isSafaricomStillProcessing({ ResultCode: "4999", ResultDesc: "Wrong credentials" })).toBe(false);
+    expect(isDarajaCredentialError({ ResultCode: "4999", ResultDesc: "Wrong credentials" })).toBe(true);
+    expect(isDarajaCredentialError({ ResultCode: "4999", ResultDesc: "Transaction is still under processing" })).toBe(false);
     expect(
       isSafaricomStillProcessing({ ResultDesc: "The transaction is still under processing" }),
     ).toBe(true);
     expect(isSafaricomStillProcessing({ ResponseCode: "0", ResultCode: "0" })).toBe(false);
+    expect(status).toContain('payment_status: "needs_attention"');
+    expect(status).toContain("do not start another payment");
+    expect(callback).toContain("isDarajaCredentialError(query)");
     expect(status).toContain('payment.status === "failed" && Number(payment.result_code) === 4999');
     expect(callback).toContain("isSafaricomStillProcessing(query)");
     expect(callback).toContain("Number(payment.result_code) !== 4999");
