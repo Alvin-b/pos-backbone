@@ -146,6 +146,7 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const callbackBase =
+    Deno.env.get("MPESA_CALLBACK_URL") ||
     Deno.env.get("DARAJA_CALLBACK_URL") ||
     `${supabaseUrl.replace(/\/$/, "")}/functions/v1/daraja-stk-callback`;
   let callbackUrl: string;
@@ -169,7 +170,7 @@ Deno.serve(async (req) => {
     return json(
       {
         success: false,
-        error: "Set a publicly reachable HTTPS DARAJA_CALLBACK_URL before accepting payments.",
+        error: "Set MPESA_CALLBACK_URL to a publicly reachable HTTPS callback before accepting payments.",
       },
       500,
     );

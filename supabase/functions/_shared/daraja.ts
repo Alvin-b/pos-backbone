@@ -1,21 +1,42 @@
 export type DarajaEnvironment = "sandbox" | "production";
 
-export function darajaConfig() {
-  const environment = (Deno.env.get("DARAJA_ENV") ?? "sandbox").toLowerCase() as DarajaEnvironment;
-  if (environment !== "sandbox" && environment !== "production") {
-    throw new Error("DARAJA_ENV must be sandbox or production");
+const KCB_BUSINESS_SHORTCODE = "522522";
+
+function configuredSecret(...names: string[]): string {
+  for (const name of names) {
+    const value = Deno.env.get(name)?.trim();
+    if (value) return value;
   }
-  const consumerKey = Deno.env.get("DARAJA_CONSUMER_KEY") ?? "";
-  const consumerSecret = Deno.env.get("DARAJA_CONSUMER_SECRET") ?? "";
-  const shortcode = Deno.env.get("MPESA_SHORTCODE") ?? "";
-  const passkey = Deno.env.get("DARAJA_PASSKEY") ?? "";
+  return "";
+}
+
+export function darajaConfig() {
+  const environment = (
+    configuredSecret("MPESA_ENVIRONMENT", "DARAJA_ENVIRONMENT", "DARAJA_ENV") || "sandbox"
+  ).toLowerCase();
+  if (environment !== "sandbox" && environment !== "production") {
+    throw new Error("MPESA_ENVIRONMENT must be sandbox or production");
+  }
+  const consumerKey = configuredSecret("MPESA_CONSUMER_KEY", "DARAJA_CONSUMER_KEY");
+  const consumerSecret = configuredSecret("MPESA_CONSUMER_SECRET", "DARAJA_CONSUMER_SECRET");
+  const shortcode = configuredSecret(
+    "MPESA_SHORTCODE",
+    "DARAJA_BUSINESS_SHORTCODE",
+    "DARAJA_SHORTCODE",
+  );
+  const passkey = configuredSecret("MPESA_PASSKEY", "DARAJA_PASSKEY");
   if (!consumerKey || !consumerSecret || !shortcode || !passkey) {
     throw new Error(
-      "Daraja is not configured. Set DARAJA_CONSUMER_KEY, DARAJA_CONSUMER_SECRET, MPESA_SHORTCODE and DARAJA_PASSKEY.",
+      "Daraja is not configured. Set MPESA_CONSUMER_KEY, MPESA_CONSUMER_SECRET, MPESA_SHORTCODE and MPESA_PASSKEY as Edge Function runtime secrets.",
+    );
+  }
+  if (shortcode !== KCB_BUSINESS_SHORTCODE) {
+    throw new Error(
+      `MPESA_SHORTCODE must be ${KCB_BUSINESS_SHORTCODE} for this KCB PayBill configuration because PartyB is fixed to the same shortcode.`,
     );
   }
   return {
-    environment,
+    environment: environment as DarajaEnvironment,
     consumerKey,
     consumerSecret,
     shortcode,
@@ -69,8 +90,11 @@ function base64(value: string): string {
 }
 
 export async function darajaCallbackSignature(paymentId: string): Promise<string> {
-  const secret =
-    Deno.env.get("DARAJA_CALLBACK_SECRET") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const secret = configuredSecret(
+    "MPESA_CALLBACK_SECRET",
+    "DARAJA_CALLBACK_SECRET",
+    "SUPABASE_SERVICE_ROLE_KEY",
+  );
   if (!secret) throw new Error("A server-side callback signing secret is not configured.");
   const key = await crypto.subtle.importKey(
     "raw",

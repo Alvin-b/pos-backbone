@@ -440,24 +440,27 @@ pending while Safaricom is processing it; only a verified callback finalizes a
 successful subscription. The callback URL is the deployed
 `daraja-stk-callback` function and must be publicly reachable over HTTPS.
 
-Daraja credentials and merchant configuration are stored only in Lovable Cloud
-secrets: `DARAJA_CONSUMER_KEY`, `DARAJA_CONSUMER_SECRET`, `MPESA_SHORTCODE`,
-`DARAJA_PASSKEY`, and `DARAJA_ENV`. This KCB PayBill request sends
+Daraja credentials and merchant configuration are stored only as Edge Function
+runtime secrets: `MPESA_CONSUMER_KEY`, `MPESA_CONSUMER_SECRET`, `MPESA_SHORTCODE`,
+`MPESA_PASSKEY`, and `MPESA_ENVIRONMENT`. The KCB PayBill request sends
 `TransactionType=CustomerPayBillOnline`, `PartyB=522522`, and
-`AccountReference=7718913`; `BusinessShortCode` comes from `MPESA_SHORTCODE`.
+`AccountReference=7718913`; `BusinessShortCode` comes from `MPESA_SHORTCODE`,
+which must also be `522522` for this merchant setup.
 The customer's normalized Kenyan number is used for both `PartyA` and
 `PhoneNumber`. The STK password is generated server-side from the configured
 shortcode, passkey, and timestamp. Keep sandbox credentials paired with
-`DARAJA_ENV=sandbox` and production credentials with `DARAJA_ENV=production`;
-the shortcode and passkey must come from the same Daraja setup and environment.
+`MPESA_ENVIRONMENT=sandbox` and production credentials with
+`MPESA_ENVIRONMENT=production`; the shortcode and passkey must come from the
+same Daraja setup and environment. Older `DARAJA_*` names are temporarily
+accepted as fallback aliases, but new deployments should use `MPESA_*`.
 The amount is loaded from trusted business subscription data, never accepted
 from the mobile request.
 
 The callback defaults to
 `https://pvcqfoycrqtnirbwtccm.supabase.co/functions/v1/daraja-stk-callback`;
-set `DARAJA_CALLBACK_URL` only if using this project's own alternate public
-HTTPS URL. Register that exact URL in the Daraja app configuration. Do not use
-a callback URL from another project.
+set `MPESA_CALLBACK_URL` only if using this project's own alternate public HTTPS
+URL. Register that exact URL in the Daraja app configuration. Do not use a
+callback URL from the WiFi reference project or another Supabase project.
 
 | Function | `verify_jwt` | Client purpose |
 |---|---:|---|

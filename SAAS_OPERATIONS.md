@@ -222,11 +222,17 @@ The Android app calls `daraja-stk-push` with the signed-in owner session. The ba
 
 Set these as Edge Function runtime secrets in Lovable/Supabase. Never place them in Android resources, Gradle properties, source control, or logs:
 
-- Required: `DARAJA_CONSUMER_KEY`, `DARAJA_CONSUMER_SECRET`, `DARAJA_SHORTCODE`, `DARAJA_PASSKEY`.
-- Live payments: `DARAJA_ENV=production`; use `DARAJA_ENV=sandbox` with test credentials. The code defaults to sandbox.
-- Optional: `DARAJA_TRANSACTION_TYPE` (default `CustomerPayBillOnline`), `DARAJA_CALLBACK_URL` (defaults to the Supabase callback URL), and `DARAJA_CALLBACK_SECRET` (independent HMAC secret; if omitted, the server-side service-role key is used only within Edge Functions).
+- Required canonical names: `MPESA_CONSUMER_KEY`, `MPESA_CONSUMER_SECRET`, `MPESA_SHORTCODE`, and `MPESA_PASSKEY`.
+- `MPESA_SHORTCODE` must be `522522` for this KCB PayBill integration; the backend uses it for `BusinessShortCode` and sends the same fixed value as `PartyB`. `AccountReference` is fixed to `7718913`.
+- Set `MPESA_ENVIRONMENT=production` with production credentials or `MPESA_ENVIRONMENT=sandbox` with sandbox credentials. The code defaults to sandbox. The shortcode and passkey must belong to the same Daraja app/environment.
+- Optional: `MPESA_CALLBACK_URL` (defaults to this POS project's `daraja-stk-callback` Edge Function) and `MPESA_CALLBACK_SECRET` (independent HMAC secret; if omitted, the Edge Function uses the server-side service-role key only for callback signing).
+- Legacy `DARAJA_*` setting aliases are temporarily accepted for migration, but new deployments should use the canonical `MPESA_*` names above. `MPESA_*` values take precedence.
 
-A custom callback URL must be a public HTTPS URL routed to `daraja-stk-callback`. The callback payment ID is HMAC-signed by the backend to prevent an unauthenticated callback from binding an arbitrary checkout to a payment. Apply migration `0046_daraja_subscription_payments.sql`, then deploy:
+A custom callback URL must be a public HTTPS URL routed to this POS project's
+`daraja-stk-callback`, not the WiFi reference project's callback. The callback
+payment ID is HMAC-signed by the backend to prevent an unauthenticated callback
+from binding an arbitrary checkout to a payment. Apply migration
+`0046_daraja_subscription_payments.sql`, then deploy:
 
 ```bash
 supabase functions deploy daraja-stk-push
