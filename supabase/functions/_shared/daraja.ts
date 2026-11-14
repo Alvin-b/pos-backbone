@@ -195,6 +195,22 @@ export async function darajaStkPush(args: {
   const config = darajaConfig();
   const timestamp = darajaTimestamp();
   const password = base64(`${config.shortcode}${config.passkey}${timestamp}`);
+  console.info("Daraja STK Push request", {
+    environment: config.environment,
+    phone_last4: args.phone.slice(-4),
+    amount: args.amount,
+    business_shortcode_last3: config.shortcode.slice(-3),
+    party_b: "522522",
+    transaction_type: "CustomerPayBillOnline",
+    account_reference: "7718913",
+    callback_host: (() => {
+      try {
+        return new URL(args.callbackUrl).host;
+      } catch {
+        return "invalid_callback_url";
+      }
+    })(),
+  });
   const { response, payload } = await darajaFetchJson(
     `${config.baseUrl}/mpesa/stkpush/v1/processrequest`,
     {
@@ -219,11 +235,12 @@ export async function darajaStkPush(args: {
     },
   );
   if (!response.ok || String(payload.ResponseCode ?? "") !== "0" || !payload.CheckoutRequestID) {
-    console.error(
-      "Daraja STK Push rejected",
-      response.status,
-      JSON.stringify(payload).slice(0, 800),
-    );
+    console.error("Daraja STK Push rejected", response.status, {
+      response_code: String(payload.ResponseCode ?? ""),
+      response_description: String(
+        payload.errorMessage ?? payload.ResponseDescription ?? payload.CustomerMessage ?? "",
+      ).slice(0, 300),
+    });
     return {
       success: false as const,
       description: String(
