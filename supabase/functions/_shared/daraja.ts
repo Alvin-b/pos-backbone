@@ -70,19 +70,7 @@ export function isSafaricomStillProcessing(result: Record<string, unknown>): boo
 }
 
 export function darajaTimestamp(now = new Date()): string {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Africa/Nairobi",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(now);
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((entry) => entry.type === type)?.value ?? "";
-  return `${part("year")}${part("month")}${part("day")}${part("hour")}${part("minute")}${part("second")}`;
+  return now.toISOString().replace(/[-T:.Z]/g, "").slice(0, 14);
 }
 
 function base64(value: string): string {
@@ -139,6 +127,7 @@ export async function darajaAccessToken(): Promise<string> {
       {
         headers: {
           Authorization: `Basic ${base64(`${config.consumerKey}:${config.consumerSecret}`)}`,
+          "Content-Type": "application/json",
         },
         signal: AbortSignal.timeout(15_000),
       },
@@ -248,6 +237,11 @@ export async function darajaStkPush(args: {
       ),
     };
   }
+  console.info("Daraja STK Push accepted", {
+    responseCode: String(payload.ResponseCode),
+    checkoutRequestId: String(payload.CheckoutRequestID),
+    merchantRequestId: String(payload.MerchantRequestID ?? ""),
+  });
   return {
     success: true as const,
     checkoutRequestId: String(payload.CheckoutRequestID),

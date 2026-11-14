@@ -7,7 +7,7 @@ import {
   flattenDiagnosticMessageText,
   transpileModule,
 } from "typescript";
-import { isSafaricomStillProcessing } from "../../supabase/functions/_shared/daraja.ts";
+import { darajaTimestamp, isSafaricomStillProcessing } from "../../supabase/functions/_shared/daraja.ts";
 
 const helper = readFileSync("supabase/functions/_shared/daraja.ts", "utf8");
 const push = readFileSync("supabase/functions/daraja-stk-push/index.ts", "utf8");
@@ -34,10 +34,9 @@ describe("Daraja subscription payment contract", () => {
     expect(helper).toContain('TransactionType: "CustomerPayBillOnline"');
     expect(helper).not.toContain('Deno.env.get("DARAJA_SHORTCODE")');
     expect(helper).not.toContain('Deno.env.get("DARAJA_TRANSACTION_TYPE")');
-    expect(helper).toContain('timeZone: "Africa/Nairobi"');
+    expect(helper).toContain("now.toISOString()");
     expect(helper).toContain("darajaCallbackSignature");
     expect(helper).toContain("verifyDarajaCallbackSignature");
-    expect(helper).not.toContain("toISOString()");
     expect(helper).toContain("https://sandbox.safaricom.co.ke");
     expect(helper).toContain("https://api.safaricom.co.ke");
     expect(helper).not.toMatch(
@@ -57,6 +56,11 @@ describe("Daraja subscription payment contract", () => {
 
   it("builds the STK password from the configured shortcode and passkey", () => {
     expect(helper).toContain("base64(`${config.shortcode}${config.passkey}${timestamp}`)");
+  });
+
+  it("formats the timestamp in UTC like the working Hotspot Hero implementation", () => {
+    expect(darajaTimestamp(new Date("2026-11-14T12:34:56.789Z"))).toBe("20261114123456");
+    expect(helper).toContain('console.info("Daraja STK Push accepted"');
   });
 
   it("refreshes and retries once when Daraja explicitly rejects an access token", () => {
