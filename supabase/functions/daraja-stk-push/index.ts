@@ -197,7 +197,10 @@ Deno.serve(async (req) => {
         })
         .eq("id", payment.id)
         .eq("status", "initiating");
-      return json({ success: false, error: result.description }, 502);
+      return json(
+        { success: false, error: result.description, diagnostics: result.diagnostics },
+        502,
+      );
     }
 
     const { error: updateError } = await db
@@ -239,6 +242,7 @@ Deno.serve(async (req) => {
       customer_message: result.customerMessage,
       amount_ksh: amount,
       plan_days: planDays,
+      diagnostics: result.diagnostics,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Daraja request failed.";

@@ -195,7 +195,7 @@ export async function darajaStkPush(args: {
   const config = darajaConfig();
   const timestamp = darajaTimestamp();
   const password = base64(`${config.shortcode}${config.passkey}${timestamp}`);
-  console.info("Daraja STK Push request", {
+  const diagnostics = {
     environment: config.environment,
     phone_last4: args.phone.slice(-4),
     amount: args.amount,
@@ -210,7 +210,8 @@ export async function darajaStkPush(args: {
         return "invalid_callback_url";
       }
     })(),
-  });
+  };
+  console.info("Daraja STK Push request", diagnostics);
   const { response, payload } = await darajaFetchJson(
     `${config.baseUrl}/mpesa/stkpush/v1/processrequest`,
     {
@@ -248,6 +249,7 @@ export async function darajaStkPush(args: {
           payload.ResponseDescription ??
           "Safaricom did not accept the STK Push request.",
       ),
+      diagnostics,
     };
   }
   console.info("Daraja STK Push accepted", {
@@ -262,6 +264,7 @@ export async function darajaStkPush(args: {
     customerMessage: String(
       payload.CustomerMessage ?? "STK Push sent. Enter your M-Pesa PIN on your phone.",
     ),
+    diagnostics,
   };
 }
 
