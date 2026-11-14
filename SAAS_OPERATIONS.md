@@ -220,11 +220,11 @@ The publishable Supabase key may be in the client. A service-role key, database 
 
 The Android app calls `daraja-stk-push` with the signed-in owner session. The backend reads the authoritative subscription price from `shops`; it never trusts an amount from the APK. Android polls `daraja-stk-status`, which is authenticated and owner-only. Safaricom calls the public `daraja-stk-callback`; the callback verifies the checkout with STK Query and finalizes only after receipt, phone, amount, and checkout checks pass. A trial entitlement or an STK Query success alone is not treated as a paid subscription.
 
-Set these as Edge Function runtime secrets in Lovable/Supabase. Never place them in Android resources, Gradle properties, source control, or logs:
+Set these as Edge Function runtime secrets in Lovable/Supabase. Never place them in Android resources, Gradle properties, source control, or logs. The subscription endpoint is production-only and uses the KCB PayBill configuration; the sandbox test panel is a separate function and never sends prompts to real customer phones.
 
 - Required canonical names: `MPESA_CONSUMER_KEY`, `MPESA_CONSUMER_SECRET`, `MPESA_SHORTCODE`, and `MPESA_PASSKEY`.
 - `MPESA_SHORTCODE` must be `522522` for this KCB PayBill integration; the backend uses it for `BusinessShortCode` and sends the same fixed value as `PartyB`. `AccountReference` is fixed to `7718913`.
-- Set `MPESA_ENVIRONMENT=production` with production credentials or `MPESA_ENVIRONMENT=sandbox` with sandbox credentials. The code defaults to sandbox. The shortcode and passkey must belong to the same Daraja app/environment.
+- Explicitly set `MPESA_ENVIRONMENT=production` with production credentials for subscription payments. The production consumer key, secret, shortcode, and passkey must belong to the same Daraja app. Do not configure this subscription endpoint for sandbox; use the Superadmin Daraja test panel and its separate test function for sandbox.
 - Optional: `MPESA_CALLBACK_URL` (defaults to this POS project's `daraja-stk-callback` Edge Function) and `MPESA_CALLBACK_SECRET` (independent HMAC secret; if omitted, the Edge Function uses the server-side service-role key only for callback signing).
 - Legacy `DARAJA_*` setting aliases are temporarily accepted for migration, but new deployments should use the canonical `MPESA_*` names above. `MPESA_*` values take precedence.
 
@@ -232,7 +232,7 @@ A custom callback URL must be a public HTTPS URL routed to this POS project's
 `daraja-stk-callback`, not the WiFi reference project's callback. The callback
 payment ID is HMAC-signed by the backend to prevent an unauthenticated callback
 from binding an arbitrary checkout to a payment. Apply migration
-`0046_daraja_subscription_payments.sql`, then deploy:
+`0049_subscription_entitlement_gate.sql` after the earlier journal entries; this migration makes expired subscription access fail at the database boundary. Then deploy:
 
 ```bash
 supabase functions deploy daraja-stk-push

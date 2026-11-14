@@ -107,8 +107,8 @@ function DarajaTestPage() {
     } else {
       const response = (data ?? { success: false, error: "empty_response" }) as Result;
       setResult(response);
-      if (typeof response.checkout_request_id === "string") {
-        setCheckoutId(response.checkout_request_id);
+      if (typeof response["checkout_request_id"] === "string") {
+        setCheckoutId(response["checkout_request_id"] as string);
       }
     }
     setBusy(false);
@@ -168,7 +168,7 @@ function DarajaTestPage() {
     );
   }
 
-  const successful = result?.success === true;
+  const successful = result?.["success"] === true;
   const selectedBusiness = businesses.find((business) => business.shop_id === shopId);
 
   return (

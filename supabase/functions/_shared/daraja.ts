@@ -1,5 +1,7 @@
 export type DarajaEnvironment = "sandbox" | "production";
 
+const SUBSCRIPTION_PAYBILL_SHORTCODE = "522522";
+
 function configuredSecret(...names: string[]): string {
   for (const name of names) {
     const value = Deno.env.get(name)?.trim();
@@ -14,8 +16,10 @@ export function darajaConfig() {
     "DARAJA_ENVIRONMENT",
     "DARAJA_ENV",
   ).toLowerCase();
-  if (configuredEnvironment && configuredEnvironment !== "production") {
-    throw new Error("DARAJA_ENV must be production for subscription payments");
+  if (configuredEnvironment !== "production") {
+    throw new Error(
+      "DARAJA_ENVIRONMENT must be explicitly set to production for subscription STK Push. Sandbox does not send prompts to real customer phones; use the Superadmin Daraja test panel for sandbox tests.",
+    );
   }
   const consumerKey = configuredSecret("MPESA_CONSUMER_KEY", "DARAJA_CONSUMER_KEY");
   const consumerSecret = configuredSecret("MPESA_CONSUMER_SECRET", "DARAJA_CONSUMER_SECRET");
@@ -28,6 +32,11 @@ export function darajaConfig() {
   if (!consumerKey || !consumerSecret || !shortcode || !passkey) {
     throw new Error(
       "Daraja is not configured. Set MPESA_CONSUMER_KEY, MPESA_CONSUMER_SECRET, MPESA_SHORTCODE and MPESA_PASSKEY as Edge Function runtime secrets.",
+    );
+  }
+  if (shortcode !== SUBSCRIPTION_PAYBILL_SHORTCODE) {
+    throw new Error(
+      `MPESA_SHORTCODE must be ${SUBSCRIPTION_PAYBILL_SHORTCODE} for this KCB PayBill integration. Confirm the production consumer key and passkey belong to this shortcode.`,
     );
   }
   return {
@@ -117,21 +126,33 @@ export async function darajaAccessToken(): Promise<string> {
 
   accessTokenRequest = (async () => {
     const config = darajaConfig();
-    const response = await fetch(
-      `${config.baseUrl}/oauth/v1/generate?grant_type=client_credentials`,
-      {
-        headers: {
-          Authorization: `Basic ${base64(`${config.consumerKey}:${config.consumerSecret}`)}`,
-          "Content-Type": "application/json",
+    let response: Response;
+    try {
+      response = await fetch(
+        `${config.baseUrl}/oauth/v1/generate?grant_type=client_credentials`,
+        {
+          headers: {
+            Authorization: `Basic ${base64(`${config.consumerKey}:${config.consumerSecret}`)}`,
+            "Content-Type": "application/json",
+          },
+          signal: AbortSignal.timeout(15_000),
         },
-        signal: AbortSignal.timeout(15_000),
-      },
-    );
+      );
+    } catch (error) {
+      const reason = error instanceof Error ? error.name : "network_error";
+      throw new Error(
+        `Could not reach Daraja OAuth (${reason}). No STK prompt was sent; check the Edge Function network and retry.`,
+      );
+    }
     const payload = await response.json().catch(() => ({}));
     if (!response.ok || typeof payload.access_token !== "string") {
       console.error("Daraja OAuth failed", response.status, JSON.stringify(payload).slice(0, 500));
+      const providerCode = [payload.error, payload.errorCode, payload.code].find(
+        (value) => typeof value === "string" && /^[A-Za-z0-9_.-]{1,60}$/.test(value),
+      );
+      const detail = providerCode ? ` Safaricom code: ${providerCode}.` : "";
       throw new Error(
-        "Could not authenticate with Daraja. Check the Daraja credentials and environment.",
+        `Could not authenticate with Daraja (HTTP ${response.status}).${detail} Check that the production consumer key and secret belong to the app registered for shortcode ${SUBSCRIPTION_PAYBILL_SHORTCODE}.`,
       );
     }
     const expiresIn = Number(payload.expires_in);

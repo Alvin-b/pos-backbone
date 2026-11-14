@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   DiagnosticCategory,
   ModuleKind,
@@ -9,6 +9,7 @@ import {
 } from "typescript";
 import {
   darajaTimestamp,
+  darajaConfig,
   isSafaricomStillProcessing,
 } from "../../supabase/functions/_shared/daraja.ts";
 
@@ -17,6 +18,12 @@ const push = readFileSync("supabase/functions/daraja-stk-push/index.ts", "utf8")
 const status = readFileSync("supabase/functions/daraja-stk-status/index.ts", "utf8");
 const callback = readFileSync("supabase/functions/daraja-stk-callback/index.ts", "utf8");
 const config = readFileSync("supabase/config.toml", "utf8");
+const entitlementMigration = readFileSync(
+  "drizzle/migrations/0049_subscription_entitlement_gate.sql",
+  "utf8",
+);
+
+afterEach(() => vi.unstubAllGlobals());
 
 describe("Daraja subscription payment contract", () => {
   it("reads credentials from Edge Function runtime secrets and uses production like Hotspot Hero", () => {
@@ -54,6 +61,22 @@ describe("Daraja subscription payment contract", () => {
     expect(helper).toContain("base64(`${config.shortcode}${config.passkey}${timestamp}`)");
   });
 
+  it("fails before charging when subscription environment or KCB shortcode is misconfigured", () => {
+    const secrets: Record<string, string> = {
+      MPESA_ENVIRONMENT: "sandbox",
+      MPESA_CONSUMER_KEY: "key",
+      MPESA_CONSUMER_SECRET: "secret",
+      MPESA_SHORTCODE: "522522",
+      MPESA_PASSKEY: "passkey",
+    };
+    vi.stubGlobal("Deno", { env: { get: (name: string) => secrets[name] } });
+    expect(() => darajaConfig()).toThrow(/must be.*production/i);
+
+    secrets.MPESA_ENVIRONMENT = "production";
+    secrets.MPESA_SHORTCODE = "123456";
+    expect(() => darajaConfig()).toThrow(/must be 522522/i);
+  });
+
   it("formats the timestamp in UTC like the working Hotspot Hero implementation", () => {
     expect(darajaTimestamp(new Date("2026-11-14T12:34:56.789Z"))).toBe("20261114123456");
     expect(helper).toContain('console.info("Daraja STK Push accepted"');
@@ -78,6 +101,25 @@ describe("Daraja subscription payment contract", () => {
     expect(push).toContain("/functions/v1/daraja-stk-callback");
     expect(push).not.toContain("payload.amount");
     expect(push).not.toContain("payload.plan_days");
+  });
+
+  it("returns definite configuration and OAuth failures and closes the attempt instead of leaving it initiating", () => {
+    expect(helper).toContain("DARAJA_ENVIRONMENT must be explicitly set to production");
+    expect(push).toContain('message.startsWith("DARAJA_ENVIRONMENT must be")');
+    expect(push).toContain("Could not authenticate with Daraja");
+    expect(push).toContain("isDefinitePreflightFailure");
+    expect(push).toContain('status: updateError ? "initiating" : "failed"');
+    expect(push).toContain("error: message");
+    expect(push).toContain("Do not mark an ambiguous STK network failure as failed");
+  });
+
+  it("enforces trial/paid entitlement in database access and mutation guards", () => {
+    expect(entitlementMigration).toContain("CREATE OR REPLACE FUNCTION public.is_shop_active");
+    expect(entitlementMigration).toContain("public.has_current_shop_subscription(_shop)");
+    expect(entitlementMigration).toContain("s.subscription_ends_at");
+    expect(entitlementMigration).toContain("s.trial_ends_at");
+    expect(entitlementMigration).toContain("subscription_expired");
+    expect(entitlementMigration).toContain("'client_operations'");
   });
 
   it("restricts payment verification to an active owner and does not activate from STK Query alone", () => {

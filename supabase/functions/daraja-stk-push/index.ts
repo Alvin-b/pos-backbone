@@ -167,20 +167,29 @@ Deno.serve(async (req) => {
     parsedCallback.searchParams.set("payment_id", payment.id);
     parsedCallback.searchParams.set("payment_signature", await darajaCallbackSignature(payment.id));
     callbackUrl = parsedCallback.toString();
-  } catch {
-    await db
+  } catch (error) {
+    const callbackError = error instanceof Error ? error.message : "callback_configuration_invalid";
+    const isSigningError = callbackError.includes("callback signing secret");
+    const { error: callbackStateError } = await db
       .from("mpesa_subscription_payments")
       .update({
         status: "failed",
-        result_description: "A publicly reachable HTTPS callback URL is required.",
+        result_description: (isSigningError
+          ? "Callback signing secret is not configured."
+          : "A publicly reachable HTTPS callback URL is required."),
       })
       .eq("id", payment.id)
       .eq("status", "initiating");
+    if (callbackStateError) {
+      console.error("Could not save callback-configuration failure", callbackStateError.message);
+    }
     return json(
       {
         success: false,
-        error:
-          "Set MPESA_CALLBACK_URL to a publicly reachable HTTPS callback before accepting payments.",
+        payment_status: callbackStateError ? "initiating" : "failed",
+        error: isSigningError
+          ? "Set MPESA_CALLBACK_SECRET (or DARAJA_CALLBACK_SECRET) as a Supabase Edge Function secret so the Safaricom callback can be verified."
+          : "Set MPESA_CALLBACK_URL to a publicly reachable HTTPS callback before accepting payments.",
       },
       500,
     );
@@ -276,13 +285,16 @@ Deno.serve(async (req) => {
       phone_last4: phone.slice(-4),
       error: message,
     });
-    // Do not mark an ambiguous network failure as failed: Safaricom may have
-    // accepted the request and the callback may still arrive.
-    if (
+    // These errors occur before the STK request reaches Safaricom, so retrying
+    // cannot double-charge. Keep timeouts after the STK request ambiguous.
+    const isDefinitePreflightFailure =
+      message.startsWith("DARAJA_ENVIRONMENT must be") ||
       message.startsWith("Daraja is not configured") ||
-      message.startsWith("Could not authenticate with Daraja")
-    ) {
-      await db
+      message.startsWith("MPESA_SHORTCODE must be") ||
+      message.startsWith("Could not authenticate with Daraja") ||
+      message.startsWith("Could not reach Daraja OAuth");
+    if (isDefinitePreflightFailure) {
+      const { error: updateError } = await db
         .from("mpesa_subscription_payments")
         .update({
           status: "failed",
@@ -291,7 +303,20 @@ Deno.serve(async (req) => {
         })
         .eq("id", payment.id)
         .eq("status", "initiating");
+      if (updateError) {
+        console.error("Could not mark preflight-failed STK attempt", updateError.message);
+      }
+      return json(
+        {
+          success: false,
+          payment_status: updateError ? "initiating" : "failed",
+          error: message,
+        },
+        502,
+      );
     }
+    // Do not mark an ambiguous STK network failure as failed: Safaricom may
+    // have accepted the request and the callback may still arrive.
     console.error("M-Pesa STK Push result is uncertain", message);
     return json(
       {
