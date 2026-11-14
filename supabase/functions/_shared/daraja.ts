@@ -1,7 +1,5 @@
 export type DarajaEnvironment = "sandbox" | "production";
 
-const KCB_BUSINESS_SHORTCODE = "522522";
-
 function configuredSecret(...names: string[]): string {
   for (const name of names) {
     const value = Deno.env.get(name)?.trim();
@@ -28,11 +26,6 @@ export function darajaConfig() {
   if (!consumerKey || !consumerSecret || !shortcode || !passkey) {
     throw new Error(
       "Daraja is not configured. Set MPESA_CONSUMER_KEY, MPESA_CONSUMER_SECRET, MPESA_SHORTCODE and MPESA_PASSKEY as Edge Function runtime secrets.",
-    );
-  }
-  if (shortcode !== KCB_BUSINESS_SHORTCODE) {
-    throw new Error(
-      `MPESA_SHORTCODE must be ${KCB_BUSINESS_SHORTCODE} for this KCB PayBill configuration because PartyB is fixed to the same shortcode.`,
     );
   }
   return {
@@ -70,7 +63,10 @@ export function isSafaricomStillProcessing(result: Record<string, unknown>): boo
 }
 
 export function darajaTimestamp(now = new Date()): string {
-  return now.toISOString().replace(/[-T:.Z]/g, "").slice(0, 14);
+  return now
+    .toISOString()
+    .replace(/[-T:.Z]/g, "")
+    .slice(0, 14);
 }
 
 function base64(value: string): string {

@@ -47,7 +47,9 @@ Deno.serve(async (req) => {
 
   const { data: shop, error: shopError } = await db
     .from("shops")
-    .select("id,name,status,subscription_price_ksh,subscription_plan_days,payment_lock_active,payment_lock_amount_ksh")
+    .select(
+      "id,name,status,subscription_price_ksh,subscription_plan_days,payment_lock_active,payment_lock_amount_ksh",
+    )
     .eq("id", shopId)
     .maybeSingle();
   if (shopError || !shop) {
@@ -60,9 +62,10 @@ Deno.serve(async (req) => {
   if (shop.status === "closed")
     return json({ success: false, error: "This business account is closed." }, 403);
 
-  const amount = shop.payment_lock_active && Number(shop.payment_lock_amount_ksh) > 0
-    ? Number(shop.payment_lock_amount_ksh)
-    : Number(shop.subscription_price_ksh);
+  const amount =
+    shop.payment_lock_active && Number(shop.payment_lock_amount_ksh) > 0
+      ? Number(shop.payment_lock_amount_ksh)
+      : Number(shop.subscription_price_ksh);
   const planDays = Number(shop.subscription_plan_days);
   if (
     !Number.isSafeInteger(amount) ||
@@ -170,7 +173,8 @@ Deno.serve(async (req) => {
     return json(
       {
         success: false,
-        error: "Set MPESA_CALLBACK_URL to a publicly reachable HTTPS callback before accepting payments.",
+        error:
+          "Set MPESA_CALLBACK_URL to a publicly reachable HTTPS callback before accepting payments.",
       },
       500,
     );

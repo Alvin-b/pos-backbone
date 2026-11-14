@@ -29,6 +29,12 @@ function SuperadminTokenPage() {
   const [autoRefreshBlocked, setAutoRefreshBlocked] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [stkPhone, setStkPhone] = useState("");
+  const [stkAmount, setStkAmount] = useState("1");
+  const [stkReference, setStkReference] = useState("CounterPOS");
+  const [stkTransactionType, setStkTransactionType] = useState("CustomerPayBillOnline");
+  const [stkBusy, setStkBusy] = useState(false);
+  const [stkResult, setStkResult] = useState<Record<string, unknown> | null>(null);
 
   const expiresLabel = useMemo(() => {
     const minutes = Math.floor(secondsLeft / 60);
@@ -85,7 +91,10 @@ function SuperadminTokenPage() {
       if (ctx && typeof ctx.json === "function") {
         try {
           const body = await ctx.clone().json();
-          return { code: String(body?.error ?? ""), text: String(body?.message ?? body?.error ?? "") };
+          return {
+            code: String(body?.error ?? ""),
+            text: String(body?.message ?? body?.error ?? ""),
+          };
         } catch {
           /* not JSON */
         }
@@ -154,6 +163,42 @@ function SuperadminTokenPage() {
     setToken(null);
     setExpiresAt(null);
     setMessage(null);
+  }
+
+  async function sendTestStkPush(event: FormEvent) {
+    event.preventDefault();
+    setStkBusy(true);
+    setStkResult(null);
+    setError(null);
+    setMessage(null);
+    const { data, error: invokeError } = await supabase.functions.invoke("test-daraja-stk-push", {
+      body: {
+        phone: stkPhone,
+        amount: Number(stkAmount),
+        reference: stkReference,
+        transactionType: stkTransactionType,
+      },
+    });
+    if (invokeError) {
+      const context = (invokeError as { context?: Response }).context;
+      let details = invokeError.message;
+      if (context) {
+        try {
+          const body = await context.clone().json();
+          details = String(body?.message ?? body?.error ?? details);
+          setStkResult(body);
+        } catch {
+          /* use the SDK error message */
+        }
+      }
+      setError(details || "The STK Push test failed.");
+    } else {
+      setStkResult(data ?? null);
+      if (data?.ok)
+        setMessage("Daraja accepted the STK Push request. Check the test phone for the prompt.");
+      else setError(String(data?.message ?? "Daraja rejected the STK Push request."));
+    }
+    setStkBusy(false);
   }
 
   if (!session) {
@@ -267,6 +312,84 @@ function SuperadminTokenPage() {
           </p>
           {message && <p className="mt-4 text-sm text-emerald-300">{message}</p>}
           {error && <p className="mt-4 text-sm text-red-300">{error}</p>}
+        </section>
+        <section className="rounded-2xl border border-amber-900/70 bg-slate-900 p-7 shadow-2xl">
+          <div>
+            <p className="text-sm font-medium text-amber-300">SANDBOX PAYMENT TEST</p>
+            <h2 className="mt-2 text-xl font-semibold">Daraja STK Push</h2>
+            <p className="mt-1 text-sm text-slate-400">
+              Sends a real Daraja test request through the server-side Edge Function. Consumer
+              credentials and the passkey never leave Supabase.
+            </p>
+          </div>
+          <form onSubmit={sendTestStkPush} className="mt-6 space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block text-sm text-slate-300">
+                M-Pesa phone number
+                <input
+                  className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-3 text-white"
+                  value={stkPhone}
+                  onChange={(event) => setStkPhone(event.target.value)}
+                  placeholder="0712345678"
+                  inputMode="tel"
+                  required
+                />
+              </label>
+              <label className="block text-sm text-slate-300">
+                Amount (KES)
+                <input
+                  className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-3 text-white"
+                  value={stkAmount}
+                  onChange={(event) => setStkAmount(event.target.value)}
+                  type="number"
+                  min="1"
+                  max="250000"
+                  step="1"
+                  required
+                />
+              </label>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block text-sm text-slate-300">
+                Account reference
+                <input
+                  className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-3 text-white"
+                  value={stkReference}
+                  onChange={(event) =>
+                    setStkReference(event.target.value.replace(/[^a-zA-Z0-9]/g, "").slice(0, 12))
+                  }
+                  maxLength={12}
+                  required
+                />
+              </label>
+              <label className="block text-sm text-slate-300">
+                Daraja transaction type
+                <select
+                  className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-3 text-white"
+                  value={stkTransactionType}
+                  onChange={(event) => setStkTransactionType(event.target.value)}
+                >
+                  <option value="CustomerPayBillOnline">Paybill</option>
+                  <option value="CustomerBuyGoodsOnline">Buy Goods / Till</option>
+                </select>
+              </label>
+            </div>
+            <button
+              disabled={stkBusy}
+              className="w-full rounded-lg bg-amber-300 px-4 py-3 font-semibold text-slate-950 disabled:opacity-50"
+            >
+              {stkBusy ? "Sending STK Push…" : "Send test STK Push"}
+            </button>
+          </form>
+          <p className="mt-4 text-xs text-amber-200/80">
+            A successful response means Daraja accepted the request, not that the customer has paid.
+            The callback records the result in function logs for this test phase.
+          </p>
+          {stkResult && (
+            <pre className="mt-5 max-h-72 overflow-auto rounded-xl border border-slate-700 bg-slate-950 p-4 text-xs leading-5 text-cyan-200">
+              {JSON.stringify(stkResult, null, 2)}
+            </pre>
+          )}
         </section>
       </div>
     </main>
