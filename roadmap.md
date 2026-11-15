@@ -1,4 +1,5 @@
 # Sign-in deployment
+- [ ] Add protected app-hosted agent integrations with managed OAuth and caller-scoped business tools; extract the MCP manifest and republish after implementation.
 - [ ] Verify the KCB-issued MPESA_SHORTCODE and matching passkey/environment, then test a production STK prompt after configuration is confirmed.
 - [x] Refresh and retry Daraja once when an STK request reports an invalid access token; deployed the updated payment functions.
 - [ ] Configure the canonical MPESA_* production runtime secrets, verify they belong to the 522522 KCB Daraja setup, and redeploy the M-Pesa payment functions.
