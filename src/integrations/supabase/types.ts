@@ -2026,6 +2026,10 @@ export type Database = {
         Args: { p_shop_id: string }
         Returns: Json
       }
+      has_current_shop_subscription: {
+        Args: { _shop: string }
+        Returns: boolean
+      }
       has_shop_role: {
         Args: {
           _roles: Database["public"]["Enums"]["shop_role"][]
