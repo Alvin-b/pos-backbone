@@ -358,6 +358,13 @@
       "when": 1794676432964,
       "tag": "0049_subscription_entitlement_gate",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1795293835661,
+      "tag": "0050_butchery_workspace",
+      "breakpoints": true
     }
   ]
 }

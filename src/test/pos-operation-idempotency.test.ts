@@ -39,6 +39,8 @@ describe('POS operation migration contract', () => {
       entry.tag === '0048_kenya_core_inventory_products');
     const entitlementMigration = journal.entries.find((entry: { tag: string }) =>
       entry.tag === '0049_subscription_entitlement_gate');
+    const butcheryMigration = journal.entries.find((entry: { tag: string }) =>
+      entry.tag === '0050_butchery_workspace');
     const last = journal.entries.at(-1);
     expect(operationMigration).toBeDefined();
     expect(billMigration).toBeDefined();
@@ -50,11 +52,16 @@ describe('POS operation migration contract', () => {
     expect(billMigration.idx).toBeLessThan(bulkMigration.idx);
     expect(bulkMigration.idx).toBeLessThan(darajaMigration.idx);
     expect(darajaMigration.idx).toBeLessThan(catalogMigration.idx);
-    expect(catalogMigration.idx).toBe(journal.entries.at(-3).idx + 1);
-    expect(catalogMigration.when).toBeGreaterThan(journal.entries.at(-3).when);
+    const paymentLockMigration = journal.entries.find((entry: { tag: string }) =>
+      entry.tag === '0047_business_payment_lock');
+    expect(catalogMigration.idx).toBe(paymentLockMigration.idx + 1);
+    expect(catalogMigration.when).toBeGreaterThan(paymentLockMigration.when);
     expect(entitlementMigration.idx).toBe(catalogMigration.idx + 1);
-    expect(entitlementMigration.tag).toBe(last.tag);
+    expect(butcheryMigration).toBeDefined();
+    expect(butcheryMigration.idx).toBe(entitlementMigration.idx + 1);
+    expect(butcheryMigration.tag).toBe(last.tag);
     expect(entitlementMigration.when).toBeGreaterThan(catalogMigration.when);
+    expect(butcheryMigration.when).toBeGreaterThan(entitlementMigration.when);
   });
   it('adds cross-device units and permits manual-depletion bulk sales in the backend contract', () => {
     expect(bulkUnitsMigration).toContain('ADD COLUMN IF NOT EXISTS sale_units jsonb');
