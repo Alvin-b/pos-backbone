@@ -41,6 +41,8 @@ describe('POS operation migration contract', () => {
       entry.tag === '0049_subscription_entitlement_gate');
     const butcheryMigration = journal.entries.find((entry: { tag: string }) =>
       entry.tag === '0050_butchery_workspace');
+    const butcheryGuardMigration = journal.entries.find((entry: { tag: string }) =>
+      entry.tag === '0051_butchery_sale_enabled_guard');
     const last = journal.entries.at(-1);
     expect(operationMigration).toBeDefined();
     expect(billMigration).toBeDefined();
@@ -59,9 +61,12 @@ describe('POS operation migration contract', () => {
     expect(entitlementMigration.idx).toBe(catalogMigration.idx + 1);
     expect(butcheryMigration).toBeDefined();
     expect(butcheryMigration.idx).toBe(entitlementMigration.idx + 1);
-    expect(butcheryMigration.tag).toBe(last.tag);
+    expect(butcheryGuardMigration).toBeDefined();
+    expect(butcheryGuardMigration.idx).toBe(butcheryMigration.idx + 1);
+    expect(butcheryGuardMigration.tag).toBe(last.tag);
     expect(entitlementMigration.when).toBeGreaterThan(catalogMigration.when);
     expect(butcheryMigration.when).toBeGreaterThan(entitlementMigration.when);
+    expect(butcheryGuardMigration.when).toBeGreaterThan(butcheryMigration.when);
   });
   it('adds cross-device units and permits manual-depletion bulk sales in the backend contract', () => {
     expect(bulkUnitsMigration).toContain('ADD COLUMN IF NOT EXISTS sale_units jsonb');
@@ -73,6 +78,11 @@ describe('POS operation migration contract', () => {
     expect(bulkUnitsMigration).toContain('ELSIF s.stock_qty > 0 THEN');
     expect(bulkUnitsMigration).toContain('CREATE OR REPLACE FUNCTION public.apply_pos_operation_legacy');
     expect(bulkUnitsMigration).not.toMatch(/CREATE OR REPLACE FUNCTION public\.apply_pos_operation\(/);
+  });
+  it('requires an enabled butchery package before recording a sale', () => {
+    const butcheryMigration = readFileSync('drizzle/migrations/0051_butchery_sale_enabled_guard.sql', 'utf8');
+    expect(butcheryMigration).toContain("ARRAY['owner','manager','cashier']::public.shop_role[]");
+    expect(butcheryMigration).toMatch(/IF NOT public\.is_platform_admin\(\) AND NOT EXISTS \(\s*SELECT 1 FROM public\.butchery_config WHERE shop_id = _shop AND enabled\s*\) THEN RAISE EXCEPTION 'butchery_disabled';/);
   });
 });
 

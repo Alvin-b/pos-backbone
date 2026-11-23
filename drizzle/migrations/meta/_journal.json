@@ -365,6 +365,13 @@
       "when": 1795293835661,
       "tag": "0050_butchery_workspace",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1795293835662,
+      "tag": "0051_butchery_sale_enabled_guard",
+      "breakpoints": true
     }
   ]
 }
