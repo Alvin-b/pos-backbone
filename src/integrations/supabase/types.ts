@@ -155,6 +155,162 @@ export type Database = {
           },
         ]
       }
+      butchery_config: {
+        Row: {
+          beef_only_mode: boolean
+          butchery_name: string
+          default_beef_price_per_kg_ksh: number
+          enabled: boolean
+          enabled_categories: Json
+          payment_methods: Json
+          shop_id: string
+          updated_at: string
+        }
+        Insert: {
+          beef_only_mode?: boolean
+          butchery_name?: string
+          default_beef_price_per_kg_ksh?: number
+          enabled?: boolean
+          enabled_categories?: Json
+          payment_methods?: Json
+          shop_id: string
+          updated_at?: string
+        }
+        Update: {
+          beef_only_mode?: boolean
+          butchery_name?: string
+          default_beef_price_per_kg_ksh?: number
+          enabled?: boolean
+          enabled_categories?: Json
+          payment_methods?: Json
+          shop_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "butchery_config_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: true
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      butchery_cuts: {
+        Row: {
+          active: boolean
+          category: string
+          icon_key: string
+          id: string
+          name: string
+          price_per_kg_ksh: number
+          shop_id: string
+          sort_order: number
+          stock_grams: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category: string
+          icon_key?: string
+          id: string
+          name: string
+          price_per_kg_ksh?: number
+          shop_id: string
+          sort_order?: number
+          stock_grams?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          icon_key?: string
+          id?: string
+          name?: string
+          price_per_kg_ksh?: number
+          shop_id?: string
+          sort_order?: number
+          stock_grams?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "butchery_cuts_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      butchery_sales: {
+        Row: {
+          attendant_name: string | null
+          attendant_user_id: string | null
+          category: string
+          created_at: string
+          cut_id: string
+          cut_name: string
+          entry_mode: string
+          id: number
+          operation_id: string
+          payment_method: string
+          price_per_kg_ksh: number
+          shop_id: string
+          stock_deducted_grams: number
+          total_ksh: number
+          undone: boolean
+          undone_at: string | null
+          weight_grams: number
+        }
+        Insert: {
+          attendant_name?: string | null
+          attendant_user_id?: string | null
+          category: string
+          created_at?: string
+          cut_id: string
+          cut_name: string
+          entry_mode: string
+          id?: number
+          operation_id: string
+          payment_method: string
+          price_per_kg_ksh: number
+          shop_id: string
+          stock_deducted_grams?: number
+          total_ksh: number
+          undone?: boolean
+          undone_at?: string | null
+          weight_grams: number
+        }
+        Update: {
+          attendant_name?: string | null
+          attendant_user_id?: string | null
+          category?: string
+          created_at?: string
+          cut_id?: string
+          cut_name?: string
+          entry_mode?: string
+          id?: number
+          operation_id?: string
+          payment_method?: string
+          price_per_kg_ksh?: number
+          shop_id?: string
+          stock_deducted_grams?: number
+          total_ksh?: number
+          undone?: boolean
+          undone_at?: string | null
+          weight_grams?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "butchery_sales_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       catalog_items: {
         Row: {
           barcode: string | null
@@ -1815,6 +1971,10 @@ export type Database = {
         }
         Returns: Json
       }
+      butchery_seed_cuts: {
+        Args: { _price: number; _shop: string }
+        Returns: undefined
+      }
       can_sell_for_shop: { Args: { _shop: string }; Returns: boolean }
       clear_employee_schedule: {
         Args: { _shop: string; _user: string }
@@ -2022,6 +2182,15 @@ export type Database = {
         }
       }
       get_business_hours: { Args: { _shop: string }; Returns: Json }
+      get_butchery_daily_sales_trend: {
+        Args: { _from?: string; _shop: string; _to?: string }
+        Returns: {
+          sale_count: number
+          sale_date: string
+          total_ksh: number
+          weight_grams: number
+        }[]
+      }
       get_shop_subscription_status: {
         Args: { p_shop_id: string }
         Returns: Json
@@ -2166,6 +2335,46 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "products"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      record_butchery_sale: {
+        Args: {
+          _attendant_name?: string
+          _category?: string
+          _cut_id: string
+          _cut_name?: string
+          _entry_mode: string
+          _operation_id?: string
+          _payment_method: string
+          _price_per_kg_ksh?: number
+          _shop: string
+          _total_ksh?: number
+          _weight_grams: number
+        }
+        Returns: {
+          attendant_name: string | null
+          attendant_user_id: string | null
+          category: string
+          created_at: string
+          cut_id: string
+          cut_name: string
+          entry_mode: string
+          id: number
+          operation_id: string
+          payment_method: string
+          price_per_kg_ksh: number
+          shop_id: string
+          stock_deducted_grams: number
+          total_ksh: number
+          undone: boolean
+          undone_at: string | null
+          weight_grams: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "butchery_sales"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -2734,6 +2943,34 @@ export type Database = {
         }
         Returns: undefined
       }
+      undo_latest_butchery_sale: {
+        Args: { _sale_id?: number; _shop: string }
+        Returns: {
+          attendant_name: string | null
+          attendant_user_id: string | null
+          category: string
+          created_at: string
+          cut_id: string
+          cut_name: string
+          entry_mode: string
+          id: number
+          operation_id: string
+          payment_method: string
+          price_per_kg_ksh: number
+          shop_id: string
+          stock_deducted_grams: number
+          total_ksh: number
+          undone: boolean
+          undone_at: string | null
+          weight_grams: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "butchery_sales"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       undo_sale: {
         Args: { _sale?: string; _shop: string }
         Returns: {
@@ -2790,9 +3027,71 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      update_butchery_category_price: {
+        Args: { _category: string; _price_per_kg_ksh: number; _shop: string }
+        Returns: number
+      }
       update_shop_name: {
         Args: { _name: string; _shop: string }
         Returns: undefined
+      }
+      upsert_butchery_config: {
+        Args: {
+          _beef_only_mode?: boolean
+          _butchery_name?: string
+          _default_beef_price_per_kg_ksh?: number
+          _enabled?: boolean
+          _enabled_categories?: Json
+          _payment_methods?: Json
+          _shop: string
+        }
+        Returns: {
+          beef_only_mode: boolean
+          butchery_name: string
+          default_beef_price_per_kg_ksh: number
+          enabled: boolean
+          enabled_categories: Json
+          payment_methods: Json
+          shop_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "butchery_config"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      upsert_butchery_cut: {
+        Args: {
+          _active?: boolean
+          _category: string
+          _icon_key?: string
+          _id: string
+          _name: string
+          _price_per_kg_ksh: number
+          _shop: string
+          _sort_order?: number
+          _stock_grams?: number
+        }
+        Returns: {
+          active: boolean
+          category: string
+          icon_key: string
+          id: string
+          name: string
+          price_per_kg_ksh: number
+          shop_id: string
+          sort_order: number
+          stock_grams: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "butchery_cuts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       validate_product_sale_units: {
         Args: { _sale_units: Json }
