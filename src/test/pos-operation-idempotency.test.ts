@@ -43,6 +43,8 @@ describe('POS operation migration contract', () => {
       entry.tag === '0050_butchery_workspace');
     const butcheryGuardMigration = journal.entries.find((entry: { tag: string }) =>
       entry.tag === '0051_butchery_sale_enabled_guard');
+    const subscriptionMigration = journal.entries.find((entry: { tag: string }) =>
+      entry.tag === '0052_admin_subscription_management');
     const last = journal.entries.at(-1);
     expect(operationMigration).toBeDefined();
     expect(billMigration).toBeDefined();
@@ -63,10 +65,13 @@ describe('POS operation migration contract', () => {
     expect(butcheryMigration.idx).toBe(entitlementMigration.idx + 1);
     expect(butcheryGuardMigration).toBeDefined();
     expect(butcheryGuardMigration.idx).toBe(butcheryMigration.idx + 1);
-    expect(butcheryGuardMigration.tag).toBe(last.tag);
+    expect(subscriptionMigration).toBeDefined();
+    expect(subscriptionMigration.idx).toBe(butcheryGuardMigration.idx + 1);
+    expect(subscriptionMigration.tag).toBe(last.tag);
     expect(entitlementMigration.when).toBeGreaterThan(catalogMigration.when);
     expect(butcheryMigration.when).toBeGreaterThan(entitlementMigration.when);
     expect(butcheryGuardMigration.when).toBeGreaterThan(butcheryMigration.when);
+    expect(subscriptionMigration.when).toBeGreaterThan(butcheryGuardMigration.when);
   });
   it('adds cross-device units and permits manual-depletion bulk sales in the backend contract', () => {
     expect(bulkUnitsMigration).toContain('ADD COLUMN IF NOT EXISTS sale_units jsonb');
