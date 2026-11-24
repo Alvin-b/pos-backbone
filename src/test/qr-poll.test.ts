@@ -6,11 +6,11 @@ const source = transpileModule(readFileSync('supabase/functions/poll-access-chal
   compilerOptions: { module: ModuleKind.ESNext, target: ScriptTarget.ES2022 },
 }).outputText.replace(/^import .*;\s*$/gm, '');
 
-async function poll(status: string, claim = true) {
+async function poll(status: string, claim = true, station: string | null = null) {
   let handler: (request: Request) => Promise<Response> = async () => new Response();
   const createUser = vi.fn();
   const results = [
-    { data: { id: 'qr', status, shop_id: status === 'pending' ? null : 'shop', role: 'cashier', expires_at: new Date(Date.now() + 600000).toISOString(), processing_at: status === 'processing' ? new Date().toISOString() : null, shops: { name: 'Shop', status: 'active' } } },
+    { data: { id: 'qr', status, shop_id: status === 'pending' ? null : 'shop', role: 'cashier', station, expires_at: new Date(Date.now() + 600000).toISOString(), processing_at: status === 'processing' ? new Date().toISOString() : null, shops: { name: 'Shop', status: 'active' } } },
     { data: claim ? { id: 'qr' } : null },
   ];
   const selects: string[] = [];
@@ -48,5 +48,9 @@ describe('QR polling', () => {
     const result = await poll('processing');
     expect(result.body).toEqual({ status: 'pending' });
     expect(result.createUser).not.toHaveBeenCalled();
+  });
+  it('returns the approved butchery station to the enrolled device', async () => {
+    const result = await poll('approved', true, 'butchery');
+    expect(result.body).toMatchObject({ status: 'approved', role: 'cashier', station: 'butchery' });
   });
 });

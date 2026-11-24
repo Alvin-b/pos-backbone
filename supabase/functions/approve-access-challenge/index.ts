@@ -9,10 +9,12 @@ Deno.serve(async (req) => {
   const token = String(body.token ?? "").trim();
   const shopId = String(body.shop_id ?? "").trim();
   const role = String(body.role ?? "cashier").trim();
+  const station = String(body.station ?? (role === "cashier" ? "waiter" : "")).trim().toLowerCase();
   const invalidFields: string[] = [];
   if (!token) invalidFields.push("token");
   if (!shopId) invalidFields.push("shop_id");
   if (!["owner", "manager", "inventory_clerk", "cashier"].includes(role)) invalidFields.push("role");
+  if (role === "cashier" && !["waiter", "butchery"].includes(station)) invalidFields.push("station");
   if (invalidFields.length) {
     return json({
       error: "invalid_qr_approval",
@@ -34,7 +36,9 @@ Deno.serve(async (req) => {
     if (!membership || membership.role !== "owner" || membership.employment_status !== "active") {
       return json({ error: "forbidden" }, 403);
     }
-    if (role !== "cashier") return json({ error: "only_waiter_role_supported" }, 400);
+    if (role !== "cashier" || !["waiter", "butchery"].includes(station)) {
+      return json({ error: "only_waiter_or_butchery_station_supported" }, 400);
+    }
   }
   const { data: shop } = await db.from("shops").select("id,status").eq("id", shopId).maybeSingle();
   if (!shop || shop.status !== "active") return json({ error: "business_not_active" }, 409);
@@ -49,12 +53,13 @@ Deno.serve(async (req) => {
     new Date(challenge.expires_at).getTime() <= Date.now()
   )
     return json({ error: "qr_expired_or_used" }, 401);
-  const { data: claimed, error } = await db
+  let { data: claimed, error } = await db
     .from("access_challenges")
     .update({
       status: "approved",
       shop_id: shopId,
       role,
+      station: role === "cashier" ? station : null,
       approved_at: new Date().toISOString(),
       approved_by: user.id,
     })
@@ -62,6 +67,24 @@ Deno.serve(async (req) => {
     .eq("status", "pending")
     .select("id")
     .maybeSingle();
+  if (error && /station|column|schema cache/i.test(error.message ?? "")) {
+    if (station === "butchery") {
+      return json({ error: "butchery_station_migration_required" }, 409);
+    }
+    ({ data: claimed, error } = await db
+      .from("access_challenges")
+      .update({
+        status: "approved",
+        shop_id: shopId,
+        role,
+        approved_at: new Date().toISOString(),
+        approved_by: user.id,
+      })
+      .eq("id", challenge.id)
+      .eq("status", "pending")
+      .select("id")
+      .maybeSingle());
+  }
   if (error) return json({ error: "could_not_approve_qr" }, 500);
   if (!claimed) return json({ error: "qr_expired_or_used" }, 409);
   return json({ approved: true });

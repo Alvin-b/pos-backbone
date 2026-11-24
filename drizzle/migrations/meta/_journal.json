@@ -379,6 +379,13 @@
       "when": 1795525977525,
       "tag": "0052_admin_subscription_management",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1795525977526,
+      "tag": "0053_qr_enrollment_station",
+      "breakpoints": true
     }
   ]
 }

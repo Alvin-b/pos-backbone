@@ -12,12 +12,23 @@ Deno.serve(async (req) => {
 
   const db = adminClient();
   const hash = await sha256(token);
-  const { data: challenge, error: readError } = await db
+  let { data: challenge, error: readError } = await db
     .from("access_challenges")
     // A pending challenge has no shop yet; an inner join would hide a valid QR.
-    .select("id,status,shop_id,role,device_key_hash,expires_at,processing_at,shops(name,status)")
+    .select("id,status,shop_id,role,station,device_key_hash,expires_at,processing_at,shops(name,status)")
     .eq("token_hash", hash)
     .maybeSingle();
+  // Older live databases may not have received the station migration yet. A
+  // waiter QR does not need that column, so keep the polling path usable while
+  // the migration is rolled out. Butchery approvals still require the station
+  // migration because their station must be persisted.
+  if (readError && /station|column|schema cache/i.test(readError.message ?? "")) {
+    ({ data: challenge, error: readError } = await db
+      .from("access_challenges")
+      .select("id,status,shop_id,role,device_key_hash,expires_at,processing_at,shops(name,status)")
+      .eq("token_hash", hash)
+      .maybeSingle());
+  }
   if (readError) return json({ error: "could_not_read_qr" }, 500);
   if (!challenge) return json({ error: "qr_not_found" }, 404);
 
@@ -225,5 +236,13 @@ Deno.serve(async (req) => {
   }
   if (!consumed) return json({ error: "qr_claim_lost" }, 409);
 
-  return json({ status: "approved", email, password: token, business_id: challenge.shop_id, business_name: shop.name, role: challenge.role });
+  return json({
+    status: "approved",
+    email,
+    password: token,
+    business_id: challenge.shop_id,
+    business_name: shop.name,
+    role: challenge.role,
+    station: challenge.station ?? (challenge.role === "cashier" ? "waiter" : null),
+  });
 });

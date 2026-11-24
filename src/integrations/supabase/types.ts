@@ -26,6 +26,7 @@ export type Database = {
           processing_at: string | null
           role: Database["public"]["Enums"]["shop_role"] | null
           shop_id: string | null
+          station: string | null
           status: string
           token_hash: string
         }
@@ -40,6 +41,7 @@ export type Database = {
           processing_at?: string | null
           role?: Database["public"]["Enums"]["shop_role"] | null
           shop_id?: string | null
+          station?: string | null
           status?: string
           token_hash: string
         }
@@ -54,6 +56,7 @@ export type Database = {
           processing_at?: string | null
           role?: Database["public"]["Enums"]["shop_role"] | null
           shop_id?: string | null
+          station?: string | null
           status?: string
           token_hash?: string
         }
