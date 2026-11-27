@@ -1,4 +1,5 @@
 import { adminClient, corsHeaders, json, sha256, syntheticEmail } from "../_shared/access.ts";
+import { accessChallengeTokenHashInputs, normalizeAccessChallengeToken } from "../_shared/access_challenge_token.ts";
 
 const CLAIM_RECOVERY_MS = 4 * 60 * 1000;
 
@@ -8,15 +9,16 @@ Deno.serve(async (req) => {
 
   const body = await req.json().catch(() => ({}));
   const token = String(body.token ?? "").trim();
-  if (!token) return json({ error: "token_required" }, 400);
+  if (!normalizeAccessChallengeToken(token)) return json({ error: "token_required" }, 400);
 
   const db = adminClient();
-  const hash = await sha256(token);
+  const hashCandidates = await Promise.all(accessChallengeTokenHashInputs(token).map(sha256));
+  const hash = hashCandidates[0];
   let { data: challenge, error: readError } = await db
     .from("access_challenges")
     // A pending challenge has no shop yet; an inner join would hide a valid QR.
     .select("id,status,shop_id,role,station,device_key_hash,expires_at,processing_at,shops(name,status)")
-    .eq("token_hash", hash)
+    .in("token_hash", hashCandidates)
     .maybeSingle();
   // Older live databases may not have received the station migration yet. A
   // waiter QR does not need that column, so keep the polling path usable while
@@ -26,7 +28,7 @@ Deno.serve(async (req) => {
     ({ data: challenge, error: readError } = await db
       .from("access_challenges")
       .select("id,status,shop_id,role,device_key_hash,expires_at,processing_at,shops(name,status)")
-      .eq("token_hash", hash)
+      .in("token_hash", hashCandidates)
       .maybeSingle());
   }
   if (readError) return json({ error: "could_not_read_qr" }, 500);

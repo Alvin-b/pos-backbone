@@ -1,4 +1,5 @@
 import { adminClient, bearer, caller, corsHeaders, json, sha256 } from "../_shared/access.ts";
+import { accessChallengeTokenHashInputs, normalizeAccessChallengeToken } from "../_shared/access_challenge_token.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -7,11 +8,12 @@ Deno.serve(async (req) => {
   if (!user) return json({ error: "not_authenticated" }, 401);
   const body = await req.json().catch(() => ({}));
   const token = String(body.token ?? "").trim();
+  const normalizedToken = normalizeAccessChallengeToken(token);
   const shopId = String(body.shop_id ?? "").trim();
   const role = String(body.role ?? "cashier").trim();
   const station = String(body.station ?? (role === "cashier" ? "waiter" : "")).trim().toLowerCase();
   const invalidFields: string[] = [];
-  if (!token) invalidFields.push("token");
+  if (!normalizedToken) invalidFields.push("token");
   if (!shopId) invalidFields.push("shop_id");
   if (!["owner", "manager", "inventory_clerk", "cashier"].includes(role)) invalidFields.push("role");
   if (role === "cashier" && !["waiter", "butchery"].includes(station)) invalidFields.push("station");
@@ -45,7 +47,7 @@ Deno.serve(async (req) => {
   const { data: challenge } = await db
     .from("access_challenges")
     .select("id,status,expires_at")
-    .eq("token_hash", await sha256(token))
+    .in("token_hash", await Promise.all(accessChallengeTokenHashInputs(token).map(sha256)))
     .maybeSingle();
   if (
     !challenge ||

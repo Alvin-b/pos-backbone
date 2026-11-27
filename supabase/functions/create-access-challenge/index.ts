@@ -1,4 +1,5 @@
 import { adminClient, corsHeaders, json, sha256, createPasskey } from "../_shared/access.ts";
+import { normalizeAccessChallengeToken } from "../_shared/access_challenge_token.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -8,7 +9,7 @@ Deno.serve(async (req) => {
   if (deviceId.length > 200) return json({ error: "invalid_device_id" }, 400);
   const token = `CPR1|${createPasskey()}-${createPasskey()}`;
   const db = adminClient();
-  const row: Record<string, string> = { token_hash: await sha256(token) };
+  const row: Record<string, string> = { token_hash: await sha256(normalizeAccessChallengeToken(token)) };
   if (deviceId) row.device_key_hash = await sha256(`counterpos-device:${deviceId}`);
   let { error } = await db.from("access_challenges").insert(row);
   // Keep old connected projects usable while the device-identity migration is

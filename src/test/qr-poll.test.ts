@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
+import { accessChallengeTokenHashInputs, normalizeAccessChallengeToken } from '../../supabase/functions/_shared/access_challenge_token';
 
 const source = transpileModule(readFileSync('supabase/functions/poll-access-challenge/index.ts', 'utf8'), {
   compilerOptions: { module: ModuleKind.ESNext, target: ScriptTarget.ES2022 },
@@ -8,25 +9,29 @@ const source = transpileModule(readFileSync('supabase/functions/poll-access-chal
 
 async function poll(status: string, claim = true, station: string | null = null) {
   let handler: (request: Request) => Promise<Response> = async () => new Response();
-  const createUser = vi.fn();
+  const createUser = vi.fn().mockResolvedValue({ data: { user: { id: 'user' } }, error: null });
   const results = [
     { data: { id: 'qr', status, shop_id: status === 'pending' ? null : 'shop', role: 'cashier', station, expires_at: new Date(Date.now() + 600000).toISOString(), processing_at: status === 'processing' ? new Date().toISOString() : null, shops: { name: 'Shop', status: 'active' } } },
     { data: claim ? { id: 'qr' } : null },
+    { data: null },
+    { data: { employment_status: 'active' } },
+    { data: { id: 'qr' } },
   ];
   const selects: string[] = [];
   const db = {
     from: () => {
       const chain: Record<string, unknown> = {};
-      for (const method of ['eq', 'gt', 'in', 'update']) chain[method] = () => chain;
+      for (const method of ['eq', 'gt', 'in', 'update', 'upsert']) chain[method] = () => chain;
       chain['select'] = (columns: string) => { selects.push(columns); return chain; };
       chain['maybeSingle'] = async () => results.shift();
       return chain;
     },
     auth: { admin: { createUser } },
   };
-  new Function('adminClient', 'corsHeaders', 'json', 'sha256', 'syntheticEmail', 'Deno', source)(
+  new Function('adminClient', 'corsHeaders', 'json', 'sha256', 'syntheticEmail', 'accessChallengeTokenHashInputs', 'normalizeAccessChallengeToken', 'Deno', source)(
     () => db, {}, (body: unknown, code = 200) => new Response(JSON.stringify(body), { status: code }),
-    async () => 'hash', () => 'identity', { serve: (fn: typeof handler) => { handler = fn; } },
+    async () => 'hash', () => 'identity', accessChallengeTokenHashInputs, normalizeAccessChallengeToken,
+    { serve: (fn: typeof handler) => { handler = fn; } },
   );
   const response = await handler(new Request('https://example.test', { method: 'POST', body: JSON.stringify({ token: 'CPR1|test' }) }));
   return { response, body: await response.json(), createUser, selects };

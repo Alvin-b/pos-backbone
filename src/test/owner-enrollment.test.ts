@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript';
+import { accessChallengeTokenHashInputs, normalizeAccessChallengeToken } from '../../supabase/functions/_shared/access_challenge_token';
 
 type EdgeHandler = (request: Request) => Promise<Response>;
 type MockDbOptions = {
@@ -13,12 +14,14 @@ function makeDb(options: MockDbOptions = {}) {
   const inserts: Array<{ table: string; row: unknown }> = [];
   const updates: Array<{ table: string; row: unknown }> = [];
   const upserts: Array<{ table: string; row: unknown; conflict: unknown }> = [];
+  const filters: Array<{ table: string; column: string; values: unknown[] }> = [];
   const singleIndices: Record<string, number> = {};
   const from = (table: string) => {
     let updatePayload: unknown = null;
     const chain: Record<string, unknown> = {};
     chain.select = () => chain;
     chain.eq = () => chain;
+    chain.in = (column: string, values: unknown[]) => { filters.push({ table, column, values }); return chain; };
     chain.gt = () => chain;
     chain.lte = () => chain;
     chain.is = () => chain;
@@ -54,6 +57,7 @@ function makeDb(options: MockDbOptions = {}) {
     inserts,
     updates,
     upserts,
+    filters,
     auth: { admin: { createUser: options.createUser ?? vi.fn(), listUsers: vi.fn() } },
     rpc: options.rpc ?? vi.fn(),
   };
@@ -93,15 +97,61 @@ const createPasskey = vi.fn(() => 'ABCD-EFGH-JKLM-NPQR-STUV');
 const syntheticEmail = vi.fn(() => 'cp-test@access.counterpos.invalid');
 
 function bindings(adminClient: () => unknown) {
-  return { adminClient, caller, corsHeaders, json, sha256, createPasskey, syntheticEmail };
+  return {
+    adminClient, caller, corsHeaders, json, sha256, createPasskey, syntheticEmail,
+    accessChallengeTokenHashInputs, normalizeAccessChallengeToken,
+  };
 }
 
+const createChallengeFunction = 'supabase/functions/create-access-challenge/index.ts';
 const passFunction = 'supabase/functions/create-access-pass/index.ts';
 const approveFunction = 'supabase/functions/approve-access-challenge/index.ts';
 const redeemFunction = 'supabase/functions/redeem-access-pass/index.ts';
 const pollFunction = 'supabase/functions/poll-access-challenge/index.ts';
 
 describe('owner Waiter enrollment', () => {
+  it('stores the bare challenge-token hash and returns the CPR1-prefixed QR', async () => {
+    const db = makeDb();
+    const digest = vi.fn(async (value: string) => `hash:${value.trim().toUpperCase()}`);
+    const handler = edgeHandler(createChallengeFunction, { ...bindings(() => db), sha256: digest });
+    const response = await handler(request({}));
+    const body = await response.json();
+    const suffix = 'ABCD-EFGH-JKLM-NPQR-STUV-ABCD-EFGH-JKLM-NPQR-STUV';
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({ token: `CPR1|${suffix}`, expires_in_seconds: 600 });
+    expect(db.inserts).toContainEqual({ table: 'access_challenges', row: { token_hash: `hash:${suffix}` } });
+    expect(digest).toHaveBeenCalledWith(suffix);
+  });
+
+  it('looks up both canonical and legacy hashes when polling and approving a QR', async () => {
+    const suffix = 'ABCD-EFGH-JKLM-NPQR-STUV';
+    const expectedHashes = [`hash:${suffix}`, `hash:CPR1|${suffix}`];
+    const digest = vi.fn(async (value: string) => `hash:${value.trim().toUpperCase()}`);
+    const pollDb = makeDb({ rows: {
+      access_challenges: { id: 'challenge-1', status: 'pending', expires_at: new Date(Date.now() + 600_000).toISOString(), processing_at: null },
+    } });
+    const pollHandler = edgeHandler(pollFunction, { ...bindings(() => pollDb), sha256: digest });
+    const pollResponse = await pollHandler(request({ token: suffix }));
+
+    expect(await pollResponse.json()).toEqual({ status: 'pending' });
+    expect(pollDb.filters).toContainEqual({ table: 'access_challenges', column: 'token_hash', values: expectedHashes });
+
+    const approveDb = makeDb({ rows: {
+      platform_admins: null,
+      shop_members: { role: 'owner', employment_status: 'active' },
+      shops: { id: 'shop-1', status: 'active' },
+      access_challenges: { id: 'challenge-1', status: 'pending', expires_at: new Date(Date.now() + 600_000).toISOString() },
+    } });
+    const approveHandler = edgeHandler(approveFunction, { ...bindings(() => approveDb), sha256: digest });
+    const approveResponse = await approveHandler(request({ token: suffix, shop_id: 'shop-1', role: 'cashier', station: 'waiter' }));
+
+    expect(approveResponse.status).toBe(200);
+    expect(approveDb.filters).toContainEqual({ table: 'access_challenges', column: 'token_hash', values: expectedHashes });
+    expect(normalizeAccessChallengeToken(`CPR1|${suffix}`)).toBe(suffix);
+    expect(accessChallengeTokenHashInputs(`CPR1|${suffix}`)).toEqual([suffix, `CPR1|${suffix}`]);
+  });
+
   it('issues a one-time cashier/Waiter passkey for an active owner', async () => {
     const db = makeDb({ rows: {
       platform_admins: null,
